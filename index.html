@@ -83,7 +83,7 @@
         <section class="content">
             <div class="container-fluid">
                 
-                <!-- DASHBOARD SECTION (Sama seperti sebelumnya) -->
+                <!-- DASHBOARD SECTION -->
                 <div id="section-dashboard" class="section-content">
                     <div class="dashboard-filter">
                         <h5><i class="fas fa-filter"></i> Filter Periode & KSM (Untuk DDD & Statistik)</h5>
@@ -138,8 +138,8 @@
                     </div>
 
                     <div class="row">
-                        <div class="col-md-6"><div class="card card-warning card-outline"><div class="card-header"><h3 class="card-title">Total DDD per Antibiotik (Periode Terpilih)</h3></div><div class="card-body"><canvas id="chartDDDTotal" height="200"></canvas></div></div></div>
-                        <div class="col-md-6"><div class="card card-danger card-outline"><div class="card-header"><h3 class="card-title">DDD / 100 Hari Rawat Inap (Periode Terpilih)</h3></div><div class="card-body"><canvas id="chartDDD100" height="200"></canvas></div></div></div>
+                        <div class="col-md-6"><div class="card card-warning card-outline"><div class="card-header"><h3 class="card-title">Total DDD per Antibiotik</h3></div><div class="card-body"><canvas id="chartDDDTotal" height="200"></canvas></div></div></div>
+                        <div class="col-md-6"><div class="card card-danger card-outline"><div class="card-header"><h3 class="card-title">DDD / 100 Hari Rawat Inap</h3></div><div class="card-body"><canvas id="chartDDD100" height="200"></canvas></div></div></div>
                     </div>
 
                     <div class="row">
@@ -398,9 +398,8 @@
 <script>
     // ==========================================
     // KONFIGURASI API GOOGLE APPS SCRIPT
-    // MASUKKAN URL WEB APP YANG ANDA SALIN DARI LANGKAH 2 DI SINI
     // ==========================================
-    const API_URL = 'MASUKKAN_URL_WEB_APP_GOOGLE_SCRIPT_ANDA_DI_SINI'; 
+    const API_URL = 'https://script.google.com/macros/s/AKfycbzl2xmEtknKhJybXXQIvrCAyRE8aPpJuVMC8ZhDQSNW1wm9OCRpCq1AGSBfi7K-K3uCuA/exec'; 
     
     let masterData = {
         dokter: ['dr. Morfino Yodi Thorasika, Sp.MK', 'dr. Anton Komala, Sp.PD', 'dr. Ria Siska, Sp.P', 'dr. Mustaqim, Sp.BS', 'dr. Paulina, Sp.U'],
@@ -419,7 +418,7 @@
     let patients = [];
 
     // ----------------------------------------------------
-    // FUNGSI UNTUK BERKOMUNIKASI DENGAN API
+    // FUNGSI UNTUK BERKOMUNIKASI DENGAN API GOOGLE SCRIPT
     // ----------------------------------------------------
     async function callAPI(action, payload = null, method = 'GET') {
         try {
@@ -427,7 +426,7 @@
             let options = { method: method, redirect: 'follow' };
 
             if (method === 'POST') {
-                options.headers = { 'Content-Type': 'text/plain;charset=utf-8' }; // Gunakan text/plain untuk menghindari CORS preflight
+                options.headers = { 'Content-Type': 'text/plain;charset=utf-8' }; // text/plain avoids CORS preflight
                 options.body = JSON.stringify(payload);
             }
 
@@ -436,7 +435,7 @@
             return data;
         } catch (error) {
             console.error("API Error:", error);
-            alert("Gagal terhubung ke database Google Sheets. Pastikan API URL benar dan telah di-deploy dengan akses 'Anyone'.");
+            alert("Gagal terhubung ke database. Pastikan API_URL benar, Google Script sudah di-deploy (Anyone), dan koneksi internet stabil.");
             return null;
         }
     }
@@ -445,12 +444,7 @@
     // INISIALISASI APLIKASI
     // ----------------------------------------------------
     document.addEventListener('DOMContentLoaded', async () => {
-        if(API_URL === 'MASUKKAN_URL_WEB_APP_GOOGLE_SCRIPT_ANDA_DI_SINI') {
-            $('#loading-overlay').html('<h4 class="text-danger">ERROR: API_URL Belum diisi di dalam kode!</h4><p>Silakan buka kode HTML, cari "const API_URL", dan masukkan link Web App Google Script Anda.</p>');
-            return;
-        }
-
-        // Load Data dari Sheets
+        // Load Data dari Google Sheets saat pertama kali dibuka
         await fetchDataFromSheets();
         
         populateDropdowns();
@@ -461,22 +455,20 @@
         renderPatients();
         renderGyssensDropdown();
         
-        // Sembunyikan loading
+        // Sembunyikan overlay loading
         $('#loading-overlay').fadeOut();
     });
 
     async function fetchDataFromSheets() {
-        // Fetch Requests
         let reqData = await callAPI('getRequests');
         if (reqData) requests = reqData;
 
-        // Fetch Patients
         let patData = await callAPI('getPatients');
         if (patData) patients = patData;
     }
 
     // ----------------------------------------------------
-    // NAVIGASI
+    // NAVIGASI MENU
     // ----------------------------------------------------
     function showSection(section) {
         $('.section-content').addClass('hidden');
@@ -502,7 +494,7 @@
     }
 
     // ----------------------------------------------------
-    // MASTER DATA
+    // MASTER DATA & DROPDOWNS
     // ----------------------------------------------------
     function populateDropdowns() {
         let optDokter = masterData.dokter.map(d => `<option value="${d}">${d}</option>`).join('');
@@ -532,7 +524,7 @@
     });
 
     // ----------------------------------------------------
-    // PERMINTAAN RESERVE (POST TO SHEETS)
+    // FORM PERMINTAAN (POST TO API)
     // ----------------------------------------------------
     $('#formPermintaan').submit(async function(e) {
         e.preventDefault();
@@ -579,7 +571,7 @@
     }
 
     // ----------------------------------------------------
-    // VALIDASI PPRA (UPDATE SHEETS)
+    // VALIDASI PPRA (UPDATE API & AUTO SYNC)
     // ----------------------------------------------------
     function renderValidationTable() {
         let pending = requests.filter(r => r.status === 'PENDING');
@@ -614,10 +606,10 @@
             req.val_dokter_ppra = $('#val_dokter_ppra').val();
             
             $('#loading-overlay').show();
-            // 1. Update Request di Sheets
+            // 1. Update Request
             await callAPI('updateRequest', req, 'POST');
 
-            // 2. Auto Sync ke Pasien jika ACC
+            // 2. Sync ke Pasien Aktif jika ACC
             if(req.status === 'ACC') {
                 let existingPatient = patients.find(p => p.rm === req.rm && p.is_discharged === false);
                 
@@ -647,13 +639,13 @@
             renderDashboard();
             renderRequests();
             $('#loading-overlay').hide();
-            alert('Validasi disimpan dan tersinkronisasi ke Google Sheets.');
+            alert('Validasi disimpan. Data ACC otomatis masuk ke Pasien Aktif.');
             $('#modalValidasi').hide();
         }
     }
 
     // ----------------------------------------------------
-    // MANAJEMEN PASIEN & DDD
+    // MANAJEMEN PASIEN
     // ----------------------------------------------------
     function tambahBarisAb() {
         let container = $('#container_ab_pasien');
@@ -761,7 +753,6 @@
                 renderDashboard();
                 alert(`Pasien KRS. LOS: ${p.los} hari. Data DDD tersimpan di Google Sheets.`);
             } else {
-                // Revert jika gagal
                 p.is_discharged = false; p.tgl_krs = "";
                 alert('Gagal update ke database.');
             }
@@ -770,10 +761,9 @@
     }
 
     // ----------------------------------------------------
-    // DASHBOARD & GYSSENS (Sama seperti logika sebelumnya, hanya membaca array lokal)
+    // DASHBOARD RENDERING
     // ----------------------------------------------------
     function renderDashboard() {
-        // [Kode Dashboard sama persis dengan yang sebelumnya, tidak ada perubahan logika]
         let filterType = $('#dash_periode_type').val(); let filterBulan = $('#dash_bulan').val();
         let filterTriwulan = $('#dash_triwulan').val(); let filterTahun = $('#dash_tahun').val();
         let filterKSM = $('#dash_ksm').val();
@@ -849,4 +839,131 @@
 
         if(window.chartGyssensDash) window.chartGyssensDash.destroy();
         window.chartGyssensDash = new Chart(document.getElementById('chartGyssens').getContext('2d'), {
-            type: 'bar', data: { labels: Object.keys(counts), datasets: [{ label: 'Jumlah Pasien', data: Object.values
+            type: 'bar', data: { labels: Object.keys(counts), datasets: [{ label: 'Jumlah Pasien', data: Object.values(counts), backgroundColor: ['#28a745', '#ffc107', '#ffc107', '#ffc107', '#fd7e14', '#fd7e14', '#fd7e14', '#fd7e14', '#dc3545', '#6c757d'] }] },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        });
+
+        // Notifikasi Review
+        let notifHtml = '';
+        patients.filter(p => !p.is_discharged).forEach(p => {
+            p.antibiotic_list.forEach(ab => {
+                let abStart = new Date(ab.tgl_mulai); let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : new Date();
+                let diffDays = Math.ceil(Math.abs(abEnd - abStart) / (1000 * 60 * 60 * 24)) || 1;
+                if([3, 5, 7].includes(diffDays)) {
+                    notifHtml += `<div class="alert alert-warning m-2 alert-custom"><i class="fas fa-bell"></i> <strong>Review Prospektif:</strong> Pasien <b>${p.nama}</b> (${ab.nama}) telah menjalani hari ke-<b>${diffDays}</b>.</div>`;
+                }
+            });
+        });
+        $('#notification-area').html(notifHtml || '<p class="p-3 text-muted">Tidak ada notifikasi review hari ini.</p>');
+    }
+
+    // ----------------------------------------------------
+    // GYSSENS EVALUATION
+    // ----------------------------------------------------
+    function renderGyssensDropdown() {
+        let opt = '<option value="">-- Pilih Pasien --</option>';
+        patients.forEach(p => { opt += `<option value="${p.id}">${p.nama} (${p.antibiotic_list.map(a=>a.nama).join(', ')})</option>`; });
+        $('#gyssens_pasien').html(opt);
+    }
+
+    function loadGyssensForm() {
+        let id = $('#gyssens_pasien').val();
+        if(!id) return alert('Pilih pasien terlebih dahulu');
+        let p = patients.find(x => x.id === id);
+        if(p.gyssens_kat) $(`input[name="gyssens_kat"][value="${p.gyssens_kat}"]`).prop('checked', true);
+        else $('input[name="gyssens_kat"]').prop('checked', false);
+        $('#gyssens_note').val(p.gyssens_note || '');
+        $('#formGyssens').removeClass('hidden');
+        $('#formGyssens').attr('data-id', id);
+    }
+
+    async function simpanGyssens() {
+        let id = $('#formGyssens').attr('data-id');
+        let p = patients.find(x => x.id === id);
+        if(p) {
+            p.gyssens_kat = $('input[name="gyssens_kat"]:checked').val() || null;
+            p.gyssens_note = $('#gyssens_note').val();
+            
+            $('#loading-overlay').show();
+            await callAPI('updatePatient', p, 'POST');
+            $('#loading-overlay').hide();
+            
+            alert('Evaluasi Gyssens disimpan ke database.');
+            renderDashboard();
+        }
+    }
+
+    // ----------------------------------------------------
+    // REKOMENDASI EMPIRIS
+    // ----------------------------------------------------
+    function cariRekomendasi() {
+        let dx = $('#inputDiagnosa').val().toLowerCase();
+        let hasil = '';
+        if(dx.includes('pneumonia') || dx.includes('cap')) hasil = `<strong>Pneumonia Komunitas (CAP):</strong><br>1. Lini 1: Ceftriaxone + Azithromycin (Watch)<br>2. Jika ESBL Risk: Meropenem (Reserve)<br><em>Data Kuman: Klebsiella & E. Coli Sensitif Meropenem (80-86%)</em>`;
+        else if(dx.includes('isk') || dx.includes('isK') || dx.includes('urosepsis')) hasil = `<strong>Infeksi Saluran Kemih (ISK):</strong><br>1. Lini 1: Ceftriaxone (Watch)<br>2. Jika ESBL Risk: Meropenem (Reserve) atau Amikacin (Access)<br><em>Data Kuman: E. Coli Sensitif Meropenem (86.8%), Amikacin (97.4%)</em>`;
+        else if(dx.includes('sepsis') || dx.includes('syok')) hasil = `<strong>Sepsis / Syok Sepsis:</strong><br>1. Empiris: Meropenem (Reserve) + Vankomisin (Reserve)<br>2. De-eskalasi sesuai kultur<br><em>Data Kuman: Patogen tersering Klebsiella, E. Coli, Acinetobacter (Resisten luas, butuh Reserve)</em>`;
+        else if(dx.includes('abses') || dx.includes('ulkus') || dx.includes('gangren')) hasil = `<strong>Infeksi Jaringan Lunak / Abses:</strong><br>1. Lini 1: Ampicillin-Sulbactam atau Ceftriaxone + Metronidazole<br>2. Jika MRSA Risk: Linezolid / Vankomisin (Reserve)<br><em>Data Kuman: Staph aureus (MRSA 60%), Sensitif Linezolid (94.5%), Vankomisin (89%)</em>`;
+        else hasil = `<em>Belum ada panduan spesifik untuk diagnosa ini. Silakan merujuk pada pedoman PPAB RSAMP secara umum atau konsultasikan ke PPRA.</em>`;
+        $('#hasilRekomendasi').removeClass('hidden').html(hasil);
+    }
+
+    // ----------------------------------------------------
+    // EXPORT EXCEL & PDF
+    // ----------------------------------------------------
+    function exportExcel() {
+        let start = $('#exp_start').val(); let end = $('#exp_end').val();
+        if(!start || !end) return alert('Pilih tanggal mulai dan akhir');
+        let filtered = requests.filter(r => r.tanggal >= start && r.tanggal <= end);
+        if(filtered.length === 0) return alert('Tidak ada data pada periode tersebut.');
+
+        let ws_data = filtered.map(r => ({
+            'Tanggal': r.tanggal, 'No RM': r.rm, 'Nama Pasien': r.nama, 'Ruangan': r.ruangan,
+            'DPJP Peminta': r.dokter, 'Diagnosa': r.diagnosa, 'Antibiotik': r.antibiotik, 'Tipe': r.tipe,
+            'Dosis': r.dosis, 'Durasi': r.durasi, 'Status PPRA': r.status, 'Saran PPRA': r.val_alasan, 'Dokter PPRA': r.val_dokter_ppra
+        }));
+        const ws = XLSX.utils.json_to_sheet(ws_data);
+        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Laporan_Antibiotik");
+        XLSX.writeFile(wb, `Laporan_Antibiotik_${start}_${end}.xlsx`);
+    }
+
+    function cetakPDFPermintaan(id) {
+        let r = requests.find(x => x.id === id);
+        if(!r) return;
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.setFontSize(16); doc.text("FORMULIR PERMINTAAN ANTIBIOTIK RESERVE", 105, 20, { align: "center" });
+        doc.setFontSize(10); doc.text("RSUD AJI MUHAMMAD PARIKESIT", 105, 26, { align: "center" }); doc.line(20, 30, 190, 30);
+        doc.setFontSize(11); let y = 40;
+        doc.text(`No. RM: ${r.rm}`, 20, y); doc.text(`Nama Pasien: ${r.nama}`, 20, y + 7);
+        doc.text(`Umur: ${r.umur}`, 20, y + 14); doc.text(`Ruang Rawat: ${r.ruangan}`, 20, y + 21);
+        doc.text(`Diagnosa: ${r.diagnosa}`, 20, y + 28); doc.text(`Dokter Peminta: ${r.dokter}`, 120, y); doc.text(`Tanggal: ${r.tanggal}`, 120, y + 7);
+        doc.setFontSize(12); doc.text("Detail Antibiotik yang Diminta:", 20, y + 40); doc.setFontSize(11);
+        doc.text(`Nama Antibiotik: ${r.antibiotik} (${r.tipe})`, 25, y + 48); doc.text(`Dosis & Frekuensi: ${r.dosis}`, 25, y + 55);
+        doc.text(`Rencana Durasi: ${r.durasi} Hari`, 25, y + 62); doc.text(`Alasan Medis:`, 25, y + 69);
+        doc.setFontSize(10); let splitAlasan = doc.splitTextToSize(r.alasan, 160); doc.text(splitAlasan, 25, y + 75);
+        doc.setFontSize(11); doc.text("Tanda Tangan Dokter Peminta,", 20, y + 100); doc.text("(_________________________)", 20, y + 120);
+        doc.text("Diterima oleh PPRA,", 130, y + 100); doc.text("(_________________________)", 130, y + 120);
+        doc.save(`Permintaan_Reserve_${r.nama}.pdf`);
+    }
+
+    function cetakPDFValidasi(id) {
+        let r = requests.find(x => x.id === id);
+        if(!r) return;
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        doc.setFontSize(16); doc.text("LEMBAR VALIDASI ANTIBIOTIK RESERVE OLEH PPRA", 105, 20, { align: "center" });
+        doc.setFontSize(10); doc.text("RSUD AJI MUHAMMAD PARIKESIT", 105, 26, { align: "center" }); doc.line(20, 30, 190, 30);
+        doc.setFontSize(11); let y = 40;
+        doc.text(`No. RM: ${r.rm}`, 20, y); doc.text(`Nama Pasien: ${r.nama}`, 20, y + 7);
+        doc.text(`Ruang Rawat: ${r.ruangan}`, 20, y + 14); doc.text(`Diagnosa: ${r.diagnosa}`, 20, y + 21);
+        doc.text(`Antibiotik: ${r.antibiotik}`, 20, y + 28); doc.text(`Dokter Peminta: ${r.dokter}`, 20, y + 35);
+        doc.setFontSize(12); doc.text("KEPUTUSAN PPRA:", 20, y + 50); doc.setFontSize(14);
+        if(r.status === 'ACC') { doc.setTextColor(0, 128, 0); doc.text("DISETUJUI (ACC)", 25, y + 60); } 
+        else { doc.setTextColor(255, 0, 0); doc.text("TIDAK DISETUJUI (TOLAK)", 25, y + 60); }
+        doc.setTextColor(0, 0, 0); doc.setFontSize(11); doc.text("Alasan / Saran PPRA:", 20, y + 75);
+        doc.setFontSize(10); let splitAlasan = doc.splitTextToSize(r.val_alasan || "-", 160); doc.text(splitAlasan, 25, y + 82);
+        doc.setFontSize(11); doc.text(`Instruksi Stop (Hari): ${r.val_stop}`, 20, y + 100);
+        doc.text("Dokter Spesialis PPRA,", 130, y + 120); doc.text(`( ${r.val_dokter_ppra || '____________________'} )`, 130, y + 135);
+        doc.save(`Validasi_PPRA_${r.nama}.pdf`);
+    }
+</script>
+</body>
+</html>
