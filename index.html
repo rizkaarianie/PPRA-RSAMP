@@ -368,10 +368,44 @@
                     </div>
                 </div>
 
-                <!-- GYSSENS SECTION -->
+                <!-- GYSSENS SECTION DENGAN DASHBOARD -->
                 <div id="section-gyssens" class="section-content hidden">
+                    <!-- Dashboard Gyssens -->
+                    <div class="row mb-3">
+                        <div class="col-lg-4 col-12">
+                            <div class="small-box bg-secondary">
+                                <div class="inner"><h3 id="gys-total">0</h3><p>Total Pasien Dievaluasi</p></div>
+                                <div class="icon"><i class="fas fa-clipboard-check"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-12">
+                            <div class="small-box bg-success">
+                                <div class="inner"><h3 id="gys-rasional">0</h3><p>Rasional (Kategori 0)</p></div>
+                                <div class="icon"><i class="fas fa-check-circle"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-12">
+                            <div class="small-box bg-danger">
+                                <div class="inner"><h3 id="gys-tidak-rasional">0</h3><p>Tidak Rasional (I - VI)</p></div>
+                                <div class="icon"><i class="fas fa-times-circle"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="card card-outline card-secondary">
+                                <div class="card-header"><h3 class="card-title">Grafik Distribusi Kategori Gyssens</h3></div>
+                                <div class="card-body">
+                                    <canvas id="chartGyssens" height="100"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Form Evaluasi -->
                     <div class="card card-secondary">
-                        <div class="card-header"><h3 class="card-title">Evaluasi Kualitas Penggunaan Antibiotik (Metode Gyssens)</h3></div>
+                        <div class="card-header"><h3 class="card-title">Form Evaluasi Kualitas Penggunaan Antibiotik (Metode Gyssens)</h3></div>
                         <div class="card-body">
                             <div class="form-group">
                                 <label>Pilih Pasien (dari Data Aktif/Selesai)</label>
@@ -403,6 +437,25 @@
                                 </div>
                                 <button class="btn btn-success" onclick="simpanGyssens()">Simpan Evaluasi</button>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Tabel Tracking Gyssens -->
+                    <div class="card card-outline card-info">
+                        <div class="card-header"><h3 class="card-title">Tracking Hasil Evaluasi Gyssens</h3></div>
+                        <div class="card-body table-responsive">
+                            <table class="table table-bordered table-striped" id="tableGyssensTracking">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Pasien</th>
+                                        <th>Antibiotik</th>
+                                        <th>Ruangan</th>
+                                        <th>Kategori Gyssens</th>
+                                        <th>Catatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -554,6 +607,7 @@
         renderValidationTable();
         renderPatients();
         renderGyssensDropdown();
+        renderGyssensDashboard(); // Panggil dashboard Gyssens saat load
         checkNotifications();
     });
 
@@ -573,7 +627,10 @@
         if(section === 'permintaan') renderRequests();
         if(section === 'validasi') renderValidationTable();
         if(section === 'pasien') renderPatients();
-        if(section === 'gyssens') renderGyssensDropdown();
+        if(section === 'gyssens') {
+            renderGyssensDropdown();
+            renderGyssensDashboard(); // Render ulang saat menu dibuka
+        }
     }
 
     // ==========================================
@@ -818,7 +875,7 @@
     }
 
     // ==========================================
-    // GYSSENS
+    // GYSSENS (DASHBOARD & FORM)
     // ==========================================
     function renderGyssensDropdown() {
         let opt = '<option value="">-- Pilih Pasien --</option>';
@@ -826,6 +883,75 @@
             opt += `<option value="${p.id}">${p.nama} (${p.antibiotik}) - ${p.tgl_mulai}</option>`;
         });
         $('#gyssens_pasien').html(opt);
+    }
+
+    function renderGyssensDashboard() {
+        // 1. Hitung Statistik
+        let totalEvaluated = patients.filter(p => p.gyssens_kat !== null && p.gyssens_kat !== undefined).length;
+        let rasional = patients.filter(p => p.gyssens_kat === '0').length;
+        let tidakRasional = totalEvaluated - rasional;
+
+        $('#gys-total').text(totalEvaluated);
+        $('#gys-rasional').text(rasional);
+        $('#gys-tidak-rasional').text(tidakRasional);
+
+        // 2. Siapkan Data Grafik
+        const categories = ['0', 'I', 'II', 'III', 'IVa', 'IVb', 'IVc', 'IVd', 'V', 'VI'];
+        let counts = { '0':0, 'I':0, 'II':0, 'III':0, 'IVa':0, 'IVb':0, 'IVc':0, 'IVd':0, 'V':0, 'VI':0 };
+        
+        patients.forEach(p => {
+            if(p.gyssens_kat && counts[p.gyssens_kat] !== undefined) {
+                counts[p.gyssens_kat]++;
+            }
+        });
+
+        let chartData = categories.map(c => counts[c]);
+
+        // 3. Render Grafik
+        let ctx = document.getElementById('chartGyssens').getContext('2d');
+        if(window.chartGyssens) window.chartGyssens.destroy();
+        
+        window.chartGyssens = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: categories,
+                datasets: [{
+                    label: 'Jumlah Pasien',
+                    data: chartData,
+                    backgroundColor: [
+                        '#28a745', // 0 (Hijau)
+                        '#ffc107', '#ffc107', '#ffc107', // I, II, III (Kuning)
+                        '#fd7e14', '#fd7e14', '#fd7e14', '#fd7e14', // IVa-d (Oranye)
+                        '#dc3545', // V (Merah)
+                        '#6c757d'  // VI (Abu)
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
+                }
+            }
+        });
+
+        // 4. Render Tabel Tracking
+        let tableHtml = '';
+        patients.forEach(p => {
+            if(p.gyssens_kat) {
+                let badgeColor = p.gyssens_kat === '0' ? 'bg-success' : (p.gyssens_kat === 'V' || p.gyssens_kat === 'VI' ? 'bg-danger' : 'bg-warning text-dark');
+                tableHtml += `<tr>
+                    <td>${p.nama}</td>
+                    <td>${p.antibiotik}</td>
+                    <td>${p.ruangan}</td>
+                    <td><span class="badge ${badgeColor}">${p.gyssens_kat}</span></td>
+                    <td>${p.gyssens_note || '-'}</td>
+                </tr>`;
+            }
+        });
+        if(tableHtml === '') tableHtml = '<tr><td colspan="5" class="text-center">Belum ada data evaluasi.</td></tr>';
+        $('#tableGyssensTracking tbody').html(tableHtml);
     }
 
     function loadGyssensForm() {
@@ -851,11 +977,12 @@
             p.gyssens_note = $('#gyssens_note').val();
             localStorage.setItem('data_patients', JSON.stringify(patients));
             alert('Evaluasi Gyssens disimpan.');
+            renderGyssensDashboard(); // Update dashboard setelah simpan
         }
     }
 
     // ==========================================
-    // DASHBOARD & CHARTS
+    // DASHBOARD UTAMA
     // ==========================================
     function renderDashboard() {
         // Cards
