@@ -32,7 +32,7 @@
 <!-- Loading Overlay -->
 <div id="loading-overlay">
     <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
-    <h4 class="mt-3 text-primary">Menghubungkan ke Database Google Sheets...</h4>
+    <h4 class="mt-3 text-primary" id="loading-text">Menghubungkan ke Database Google Sheets...</h4>
 </div>
 
 <div class="wrapper">
@@ -397,12 +397,13 @@
 
 <script>
     // ==========================================
-    // KONFIGURASI API GOOGLE APPS SCRIPT ANDA
+    // KONFIGURASI API URL
     // ==========================================
     const API_URL = 'https://script.google.com/macros/s/AKfycbzl2xmEtknKhJybXXQIvrCAyRE8aPpJuVMC8ZhDQSNW1wm9OCRpCq1AGSBfi7K-K3uCuA/exec'; 
     
+    // Data master default (akan ditimpa oleh data dari GS jika ada)
     let masterData = {
-        dokter: ['dr. Morfino Yodi Thorasika, Sp.MK', 'dr. Anton Komala, Sp.PD', 'dr. Ria Siska, Sp.P', 'dr. Mustaqim, Sp.BS', 'dr. Paulina, Sp.U'],
+        dokter: ['dr. Morfino Yodi Thorasika, Sp.MK', 'dr. Anton Komala, Sp.PD', 'dr. Ria Siska, Sp.P', 'dr. Mustaqim, Sp.BS', 'dr. Paulina, Sp.U', 'dr. Ferdika Suhendra, Sp.OG'],
         ruangan: ['ICU', 'PICU/NICU', 'Punai 1', 'Punai 2', 'Punai 3', 'Enggang 1', 'Enggang 2', 'Enggang 3', 'Elang 3', 'Intermediate', 'HCU'],
         antibiotik: [
             {nama: 'Meropenem', kelas: 'Reserve', ddd: 3}, {nama: 'Vankomisin', kelas: 'Reserve', ddd: 2},
@@ -417,63 +418,99 @@
     let requests = [];
     let patients = [];
 
-    // ----------------------------------------------------
-    // FUNGSI UNTUK BERKOMUNIKASI DENGAN API GOOGLE SCRIPT
-    // ----------------------------------------------------
-    async function callAPI(action, payload = null, method = 'GET') {
-        try {
-            let url = `${API_URL}?action=${action}`;
-            let options = { method: method, redirect: 'follow' };
-
-            if (method === 'POST') {
-                options.headers = { 'Content-Type': 'text/plain;charset=utf-8' }; 
-                options.body = JSON.stringify(payload);
+    // ==========================================
+    // FUNGSI FETCH DENGAN JSONP (Mencegah CORS)
+    // ==========================================
+    function callAPI(action, payload = null, method = 'GET') {
+        return new Promise((resolve, reject) => {
+            if (method === 'GET') {
+                // Trik JSONP untuk GET
+                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+                window[callbackName] = function(data) {
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    resolve(data);
+                };
+                
+                const script = document.createElement('script');
+                script.src = `${API_URL}?action=${action}&callback=${callbackName}`;
+                
+                script.onerror = function() {
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    reject(new Error("Gagal memuat data dari Google Script"));
+                };
+                
+                document.body.appendChild(script);
+            } else {
+                // POST menggunakan fetch standar (text/plain aman dari CORS)
+                fetch(`${API_URL}?action=${action}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                })
+                .then(res => res.json())
+                .then(data => resolve(data))
+                .catch(err => reject(err));
             }
-
-            const response = await fetch(url, options);
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error("API Error:", error);
-            alert("Gagal terhubung ke database. Pastikan API_URL benar, Google Script sudah di-deploy (Anyone), dan koneksi internet stabil.");
-            return null;
-        }
+        });
     }
 
-    // ----------------------------------------------------
+    // ==========================================
     // INISIALISASI APLIKASI
-    // ----------------------------------------------------
+    // ==========================================
     document.addEventListener('DOMContentLoaded', async () => {
-        await fetchDataFromSheets();
-        populateDropdowns();
-        renderMasterLists();
-        renderDashboard();
-        renderRequests();
-        renderValidationTable();
-        renderPatients();
-        renderGyssensDropdown();
-        $('#loading-overlay').fadeOut();
+        // Tambahkan timeout 10 detik agar tidak loading terus
+        const timeoutId = setTimeout(() => {
+            if($('#loading-overlay').is(':visible')) {
+                $('#loading-text').html('<span class="text-danger">Koneksi Timeout!</span><br><small>Pastikan Web App Google Script di-deploy dengan akses "Anyone".</small><br><button class="btn btn-sm btn-primary mt-3" onclick="location.reload()">Coba Lagi</button>');
+            }
+        }, 10000);
+
+        try {
+            await fetchDataFromSheets();
+            clearTimeout(timeoutId);
+            
+            populateDropdowns();
+            renderMasterLists();
+            renderDashboard();
+            renderRequests();
+            renderValidationTable();
+            renderPatients();
+            renderGyssensDropdown();
+            
+            $('#loading-overlay').fadeOut();
+        } catch (error) {
+            clearTimeout(timeoutId);
+            $('#loading-text').html('<span class="text-danger">Gagal Menghubungkan Database!</span><br><small>' + error.message + '</small><br><button class="btn btn-sm btn-primary mt-3" onclick="location.reload()">Coba Lagi</button>');
+        }
     });
 
     async function fetchDataFromSheets() {
         // Ambil Data Master
-        let masterRes = await callAPI('getMaster');
-        if (masterRes && masterRes.antibiotik && masterRes.antibiotik.length > 0) {
-            masterData = masterRes;
-        }
+        try {
+            let masterRes = await callAPI('getMaster');
+            if (masterRes && masterRes.antibiotik && masterRes.antibiotik.length > 0) {
+                masterData = masterRes;
+            }
+        } catch(e) { console.log("Gagal memuat master, pakai data default."); }
 
         // Ambil Requests
-        let reqData = await callAPI('getRequests');
-        if (reqData) requests = reqData;
+        try {
+            let reqData = await callAPI('getRequests');
+            if (reqData) requests = reqData;
+        } catch(e) { console.log("Gagal memuat requests."); }
 
         // Ambil Patients
-        let patData = await callAPI('getPatients');
-        if (patData) patients = patData;
+        try {
+            let patData = await callAPI('getPatients');
+            if (patData) patients = patData;
+        } catch(e) { console.log("Gagal memuat patients."); }
     }
 
-    // ----------------------------------------------------
-    // NAVIGASI MENU
-    // ----------------------------------------------------
+    // ==========================================
+    // NAVIGASI
+    // ==========================================
     function showSection(section) {
         $('.section-content').addClass('hidden');
         $(`#section-${section}`).removeClass('hidden');
@@ -497,9 +534,9 @@
         if(type === 'tahun') $('#input_tahun').removeClass('hidden');
     }
 
-    // ----------------------------------------------------
-    // MASTER DATA & DROPDOWNS
-    // ----------------------------------------------------
+    // ==========================================
+    // MASTER DATA
+    // ==========================================
     function populateDropdowns() {
         let optDokter = masterData.dokter.map(d => `<option value="${d}">${d}</option>`).join('');
         let optRuangan = masterData.ruangan.map(r => `<option value="${r}">${r}</option>`).join('');
@@ -518,6 +555,7 @@
         $('#listAntibiotik').html(masterData.antibiotik.map(a => `<li class="list-group-item d-flex justify-content-between align-items-center">${a.nama} <span><span class="badge bg-secondary me-2">${a.kelas}</span> <span class="badge bg-info">DDD: ${a.ddd} g</span></span></li>`).join(''));
     }
 
+    // Simpan Master (Hanya lokal di browser, tidak disinkron ke GS)
     $('#formDokter').submit(function(e) { e.preventDefault(); masterData.dokter.push($('#new_dokter').val()); $('#new_dokter').val(''); renderMasterLists(); populateDropdowns(); });
     $('#formRuangan').submit(function(e) { e.preventDefault(); masterData.ruangan.push($('#new_ruangan').val()); $('#new_ruangan').val(''); renderMasterLists(); populateDropdowns(); });
     $('#formAntibiotik').submit(function(e) { 
@@ -527,9 +565,9 @@
         renderMasterLists(); populateDropdowns(); 
     });
 
-    // ----------------------------------------------------
-    // FORM PERMINTAAN (POST TO API)
-    // ----------------------------------------------------
+    // ==========================================
+    // PERMINTAAN
+    // ==========================================
     $('#formPermintaan').submit(async function(e) {
         e.preventDefault();
         let newReq = {
@@ -543,15 +581,17 @@
         };
         
         $('#loading-overlay').show();
-        let res = await callAPI('saveRequest', newReq, 'POST');
-        if(res && res.status === 'success') {
-            requests.push(newReq);
-            this.reset();
-            renderRequests();
-            alert('Permintaan berhasil dikirim dan tersimpan di Google Sheets.');
-        } else {
-            alert('Gagal menyimpan ke Google Sheets.');
-        }
+        try {
+            let res = await callAPI('saveRequest', newReq, 'POST');
+            if(res && res.status === 'success') {
+                requests.push(newReq);
+                this.reset();
+                renderRequests();
+                alert('Permintaan berhasil dikirim dan tersimpan di Google Sheets.');
+            } else {
+                alert('Gagal menyimpan ke Google Sheets.');
+            }
+        } catch(e) { alert('Error koneksi.'); }
         $('#loading-overlay').hide();
     });
 
@@ -574,9 +614,9 @@
         $('#tablePermintaan tbody').html(html);
     }
 
-    // ----------------------------------------------------
-    // VALIDASI PPRA (UPDATE API & AUTO SYNC)
-    // ----------------------------------------------------
+    // ==========================================
+    // VALIDASI PPRA
+    // ==========================================
     function renderValidationTable() {
         let pending = requests.filter(r => r.status === 'PENDING');
         let html = '';
@@ -610,47 +650,49 @@
             req.val_dokter_ppra = $('#val_dokter_ppra').val();
             
             $('#loading-overlay').show();
-            // 1. Update Request
-            await callAPI('updateRequest', req, 'POST');
+            try {
+                // 1. Update Request
+                await callAPI('updateRequest', req, 'POST');
 
-            // 2. Sync ke Pasien Aktif jika ACC
-            if(req.status === 'ACC') {
-                let existingPatient = patients.find(p => p.rm === req.rm && p.is_discharged === false);
-                
-                if(!existingPatient) {
-                    let newP = {
-                        id: Date.now().toString(), rm: req.rm, nama: req.nama, ruangan: req.ruangan,
-                        tgl_masuk: req.tanggal, tgl_krs: "", is_discharged: false, los: "",
-                        gyssens_kat: "", gyssens_note: "",
-                        antibiotic_list: [{
+                // 2. Sync ke Pasien Aktif jika ACC
+                if(req.status === 'ACC') {
+                    let existingPatient = patients.find(p => p.rm === req.rm && p.is_discharged === false);
+                    
+                    if(!existingPatient) {
+                        let newP = {
+                            id: Date.now().toString(), rm: req.rm, nama: req.nama, ruangan: req.ruangan,
+                            tgl_masuk: req.tanggal, tgl_krs: "", is_discharged: false, los: "",
+                            gyssens_kat: "", gyssens_note: "",
+                            antibiotic_list: [{
+                                nama: req.antibiotik, tipe: req.tipe, dosis: parseFloat(req.dosis) || 1,
+                                tgl_mulai: req.tanggal, tgl_stop: "", lot: "", total_dosis: "", ddd_total: "", ddd_100: ""
+                            }]
+                        };
+                        await callAPI('savePatient', newP, 'POST');
+                        patients.push(newP);
+                    } else {
+                        existingPatient.antibiotic_list.push({
                             nama: req.antibiotik, tipe: req.tipe, dosis: parseFloat(req.dosis) || 1,
                             tgl_mulai: req.tanggal, tgl_stop: "", lot: "", total_dosis: "", ddd_total: "", ddd_100: ""
-                        }]
-                    };
-                    await callAPI('savePatient', newP, 'POST');
-                    patients.push(newP);
-                } else {
-                    existingPatient.antibiotic_list.push({
-                        nama: req.antibiotik, tipe: req.tipe, dosis: parseFloat(req.dosis) || 1,
-                        tgl_mulai: req.tanggal, tgl_stop: "", lot: "", total_dosis: "", ddd_total: "", ddd_100: ""
-                    });
-                    await callAPI('updatePatient', existingPatient, 'POST');
+                        });
+                        await callAPI('updatePatient', existingPatient, 'POST');
+                    }
+                    renderPatients();
                 }
-                renderPatients();
-            }
 
-            renderValidationTable();
-            renderDashboard();
-            renderRequests();
+                renderValidationTable();
+                renderDashboard();
+                renderRequests();
+                alert('Validasi disimpan. Data ACC otomatis masuk ke Pasien Aktif.');
+                $('#modalValidasi').hide();
+            } catch(e) { alert('Gagal menyimpan validasi.'); }
             $('#loading-overlay').hide();
-            alert('Validasi disimpan. Data ACC otomatis masuk ke Pasien Aktif.');
-            $('#modalValidasi').hide();
         }
     }
 
-    // ----------------------------------------------------
+    // ==========================================
     // MANAJEMEN PASIEN
-    // ----------------------------------------------------
+    // ==========================================
     function tambahBarisAb() {
         let container = $('#container_ab_pasien');
         let optAb = masterData.antibiotik.map(a => `<option value="${a.nama}">${a.nama} (${a.kelas})</option>`).join('');
@@ -691,15 +733,17 @@
         };
         
         $('#loading-overlay').show();
-        let res = await callAPI('savePatient', newP, 'POST');
-        if(res && res.status === 'success') {
-            patients.push(newP);
-            this.reset();
-            $('#container_ab_pasien').html(`<div class="row ab-row mb-2"><div class="col-md-3"><label>Antibiotik</label><select class="form-control ab-select" required></select></div><div class="col-md-2"><label>Tipe</label><select class="form-control ab-tipe" required><option value="Empiris">Empiris</option><option value="Definitif">Definitif</option><option value="Profilaksis">Profilaksis</option></select></div><div class="col-md-2"><label>Dosis (gram/hari)</label><input type="number" step="0.01" class="form-control ab-dosis" required></div><div class="col-md-2"><label>Tgl Mulai AB</label><input type="date" class="form-control ab-mulai" required></div><div class="col-md-2"><label>Tgl Stop AB</label><input type="date" class="form-control ab-stop"></div><div class="col-md-1 d-flex align-items-end"><button type="button" class="btn btn-danger btn-sm w-100" onclick="hapusBarisAb(this)" disabled><i class="fas fa-trash"></i></button></div></div>`);
-            populateDropdowns();
-            renderPatients();
-            alert('Data pasien berhasil disimpan ke Google Sheets.');
-        }
+        try {
+            let res = await callAPI('savePatient', newP, 'POST');
+            if(res && res.status === 'success') {
+                patients.push(newP);
+                this.reset();
+                $('#container_ab_pasien').html(`<div class="row ab-row mb-2"><div class="col-md-3"><label>Antibiotik</label><select class="form-control ab-select" required></select></div><div class="col-md-2"><label>Tipe</label><select class="form-control ab-tipe" required><option value="Empiris">Empiris</option><option value="Definitif">Definitif</option><option value="Profilaksis">Profilaksis</option></select></div><div class="col-md-2"><label>Dosis (gram/hari)</label><input type="number" step="0.01" class="form-control ab-dosis" required></div><div class="col-md-2"><label>Tgl Mulai AB</label><input type="date" class="form-control ab-mulai" required></div><div class="col-md-2"><label>Tgl Stop AB</label><input type="date" class="form-control ab-stop"></div><div class="col-md-1 d-flex align-items-end"><button type="button" class="btn btn-danger btn-sm w-100" onclick="hapusBarisAb(this)" disabled><i class="fas fa-trash"></i></button></div></div>`);
+                populateDropdowns();
+                renderPatients();
+                alert('Data pasien berhasil disimpan ke Google Sheets.');
+            }
+        } catch(e) { alert('Gagal menyimpan data pasien.'); }
         $('#loading-overlay').hide();
     });
 
@@ -751,22 +795,24 @@
             });
 
             $('#loading-overlay').show();
-            let res = await callAPI('updatePatient', p, 'POST');
-            if(res && res.status === 'success') {
-                renderPatients();
-                renderDashboard();
-                alert(`Pasien KRS. LOS: ${p.los} hari. Data DDD tersimpan di Google Sheets.`);
-            } else {
-                p.is_discharged = false; p.tgl_krs = "";
-                alert('Gagal update ke database.');
-            }
+            try {
+                let res = await callAPI('updatePatient', p, 'POST');
+                if(res && res.status === 'success') {
+                    renderPatients();
+                    renderDashboard();
+                    alert(`Pasien KRS. LOS: ${p.los} hari. Data DDD tersimpan di Google Sheets.`);
+                } else {
+                    p.is_discharged = false; p.tgl_krs = "";
+                    alert('Gagal update ke database.');
+                }
+            } catch(e) { alert('Error koneksi.'); }
             $('#loading-overlay').hide();
         }
     }
 
-    // ----------------------------------------------------
+    // ==========================================
     // DASHBOARD RENDERING
-    // ----------------------------------------------------
+    // ==========================================
     function renderDashboard() {
         let filterType = $('#dash_periode_type').val(); let filterBulan = $('#dash_bulan').val();
         let filterTriwulan = $('#dash_triwulan').val(); let filterTahun = $('#dash_tahun').val();
@@ -847,7 +893,6 @@
             options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
         });
 
-        // Notifikasi Review
         let notifHtml = '';
         patients.filter(p => !p.is_discharged).forEach(p => {
             p.antibiotic_list.forEach(ab => {
@@ -861,9 +906,9 @@
         $('#notification-area').html(notifHtml || '<p class="p-3 text-muted">Tidak ada notifikasi review hari ini.</p>');
     }
 
-    // ----------------------------------------------------
+    // ==========================================
     // GYSSENS EVALUATION
-    // ----------------------------------------------------
+    // ==========================================
     function renderGyssensDropdown() {
         let opt = '<option value="">-- Pilih Pasien --</option>';
         patients.forEach(p => { opt += `<option value="${p.id}">${p.nama} (${p.antibiotic_list.map(a=>a.nama).join(', ')})</option>`; });
@@ -889,17 +934,18 @@
             p.gyssens_note = $('#gyssens_note').val();
             
             $('#loading-overlay').show();
-            await callAPI('updatePatient', p, 'POST');
+            try {
+                await callAPI('updatePatient', p, 'POST');
+                alert('Evaluasi Gyssens disimpan ke database.');
+                renderDashboard();
+            } catch(e) { alert('Gagal menyimpan Gyssens.'); }
             $('#loading-overlay').hide();
-            
-            alert('Evaluasi Gyssens disimpan ke database.');
-            renderDashboard();
         }
     }
 
-    // ----------------------------------------------------
+    // ==========================================
     // REKOMENDASI EMPIRIS
-    // ----------------------------------------------------
+    // ==========================================
     function cariRekomendasi() {
         let dx = $('#inputDiagnosa').val().toLowerCase();
         let hasil = '';
@@ -911,9 +957,9 @@
         $('#hasilRekomendasi').removeClass('hidden').html(hasil);
     }
 
-    // ----------------------------------------------------
+    // ==========================================
     // EXPORT EXCEL & PDF
-    // ----------------------------------------------------
+    // ==========================================
     function exportExcel() {
         let start = $('#exp_start').val(); let end = $('#exp_end').val();
         if(!start || !end) return alert('Pilih tanggal mulai dan akhir');
