@@ -751,47 +751,62 @@
 
     function renderPatients() {
         let html = '';
+        // Pastikan filter aman untuk data dari Google Sheets (bisa berupa boolean atau string)
         patients.filter(p => p.is_discharged === false || p.is_discharged === "false" || p.is_discharged === "").forEach(p => {
-            
-            // Hitung Hari Rawat (LOS) berjalan
-            let tglMasuk = new Date(p.tgl_masuk);
-            let diffDays = Math.ceil(Math.abs(new Date() - tglMasuk) / (1000 * 60 * 60 * 24)) || 1;
-            
-            let abHtml = '';
-            let reviewNeeded = false;
-            
-            // Pastikan antibiotic_list berformat array (karena dari GS bisa berupa string JSON)
-            let abList = typeof p.antibiotic_list === 'string' ? JSON.parse(p.antibiotic_list) : p.antibiotic_list;
-            if(!Array.isArray(abList)) abList = [];
-
-            abList.forEach(ab => {
-                let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : new Date();
-                let abDiff = Math.ceil(Math.abs(abEnd - new Date(ab.tgl_mulai)) / (1000 * 60 * 60 * 24)) || 1;
-                if([3, 5, 7].includes(abDiff)) reviewNeeded = true;
+            try {
+                // Hitung Hari Rawat (LOS)
+                let tglMasuk = new Date(p.tgl_masuk);
+                let diffDays = Math.ceil(Math.abs(new Date() - tglMasuk) / (1000 * 60 * 60 * 24)) || 1;
                 
-                let badgeTipe = ab.tipe === 'Empiris' ? 'bg-info' : (ab.tipe === 'Definitif' ? 'bg-success' : 'bg-secondary');
-                abHtml += `<div class="ab-list-item mb-1 p-2"><b>${ab.nama}</b> <span class="badge ${badgeTipe}">${ab.tipe}</span><br><small>Dosis: ${ab.dosis} g/hr | Mulai: ${ab.tgl_mulai} | Hari ke-${abDiff}</small></div>`;
-            });
+                let abHtml = '';
+                let reviewNeeded = false;
+                
+                // PENGAMAN 1: Pastikan antibiotic_list adalah Array (bukan string dari GS)
+                let abList = p.antibiotic_list;
+                if (typeof abList === 'string') {
+                    try { abList = JSON.parse(abList); } catch(e) { abList = []; }
+                }
+                if (!Array.isArray(abList)) abList = [];
 
-            let statusReview = reviewNeeded ? `<span class="badge bg-warning">Perlu Review</span>` : '<span class="badge bg-secondary">Berjalan</span>';
+                abList.forEach(ab => {
+                    let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : new Date();
+                    let abDiff = Math.ceil(Math.abs(abEnd - new Date(ab.tgl_mulai)) / (1000 * 60 * 60 * 24)) || 1;
+                    if([3, 5, 7].includes(abDiff)) reviewNeeded = true;
+                    
+                    let badgeTipe = ab.tipe === 'Empiris' ? 'bg-info' : (ab.tipe === 'Definitif' ? 'bg-success' : 'bg-secondary');
+                    abHtml += `<div class="ab-list-item mb-1 p-2"><b>${ab.nama}</b> <span class="badge ${badgeTipe}">${ab.tipe}</span><br><small>Dosis: ${ab.dosis} g/hr | Mulai: ${ab.tgl_mulai} | Hari ke-${abDiff}</small></div>`;
+                });
 
-            // KUNCI PERBAIKAN: Pastikan ID diubah menjadi string murni dengan bungkus kutip tunggal
-            let safeId = `'${p.id}'`;
+                let statusReview = reviewNeeded ? `<span class="badge bg-warning">Perlu Review</span>` : '<span class="badge bg-secondary">Berjalan</span>';
 
-            html += `<tr>
-                <td>${p.rm}</td>
-                <td>${p.nama}</td>
-                <td>${p.ruangan}</td>
-                <td>${abHtml}</td>
-                <td>${p.tgl_masuk}</td>
-                <td>${diffDays}</td>
-                <td>${statusReview}</td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="prosesKRS(${safeId})">
-                        <i class="fas fa-sign-out-alt"></i> KRS (Hitung DDD)
-                    </button>
-                </td>
-            </tr>`;
+                // PENGAMAN 2: Pastikan ID dibungkus string
+                let safeId = `'${p.id}'`;
+
+                html += `<tr>
+                    <td>${p.rm}</td>
+                    <td>${p.nama}</td>
+                    <td>${p.ruangan}</td>
+                    <td>${abHtml}</td>
+                    <td>${p.tgl_masuk}</td>
+                    <td>${diffDays}</td>
+                    <td>${statusReview}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="prosesKRS(${safeId})">
+                            <i class="fas fa-sign-out-alt"></i> KRS
+                        </button>
+                    </td>
+                </tr>`;
+            } catch (err) {
+                console.error("Error merender pasien:", p.nama, err);
+                // Tetap tampilkan baris meskipun ada data yang error
+                html += `<tr>
+                    <td>${p.rm || '-'}</td>
+                    <td>${p.nama || '-'}</td>
+                    <td>${p.ruangan || '-'}</td>
+                    <td colspan="4" class="text-danger">Data korup/error: ${err.message}</td>
+                    <td><button type="button" class="btn btn-sm btn-secondary" disabled>Error</button></td>
+                </tr>`;
+            }
         });
         
         if(html === '') html = '<tr><td colspan="8" class="text-center">Belum ada data pasien berjalan.</td></tr>';
