@@ -456,9 +456,17 @@
     });
 
     async function fetchDataFromSheets() {
+        // Ambil Data Master
+        let masterRes = await callAPI('getMaster');
+        if (masterRes && masterRes.antibiotik && masterRes.antibiotik.length > 0) {
+            masterData = masterRes;
+        }
+
+        // Ambil Requests
         let reqData = await callAPI('getRequests');
         if (reqData) requests = reqData;
 
+        // Ambil Patients
         let patData = await callAPI('getPatients');
         if (patData) patients = patData;
     }
