@@ -149,7 +149,9 @@
                                 <div class="col-md-4"><div class="small-box bg-success"><div class="inner"><h3 id="gys-rasional">0</h3><p>Rasional (0)</p></div></div></div>
                                 <div class="col-md-4"><div class="small-box bg-danger"><div class="inner"><h3 id="gys-tidak-rasional">0</h3><p>Tidak Rasional (I-VI)</p></div></div></div>
                             </div>
-                            <canvas id="chartGyssens" height="100"></canvas>
+                            <div style="position: relative; height: 300px; width: 100%;">
+                           <canvas id="chartGyssens"></canvas>
+                         </div>
                         </div></div></div>
                     </div>
                     
@@ -878,8 +880,25 @@
 
         if(window.chartGyssensDash) window.chartGyssensDash.destroy();
         window.chartGyssensDash = new Chart(document.getElementById('chartGyssens').getContext('2d'), {
-            type: 'bar', data: { labels: Object.keys(counts), datasets: [{ label: 'Jumlah Pasien', data: Object.values(counts), backgroundColor: ['#28a745', '#ffc107', '#ffc107', '#ffc107', '#fd7e14', '#fd7e14', '#fd7e14', '#fd7e14', '#dc3545', '#6c757d'] }] },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+            type: 'bar', 
+            data: { 
+                labels: Object.keys(counts), 
+                datasets: [{ 
+                    label: 'Jumlah Pasien', 
+                    data: Object.values(counts), 
+                    backgroundColor: ['#28a745', '#ffc107', '#ffc107', '#ffc107', '#fd7e14', '#fd7e14', '#fd7e14', '#fd7e14', '#dc3545', '#6c757d'] 
+                }] 
+            },
+            options: { 
+                responsive: true, 
+                maintainAspectRatio: false, // <--- INI KUNCI UTAMANYA
+                scales: { 
+                    y: { 
+                        beginAtZero: true, 
+                        ticks: { stepSize: 1 } 
+                    } 
+                } 
+            }
         });
 
         let notifHtml = '';
