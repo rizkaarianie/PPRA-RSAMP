@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIM-ABX RSAMP | Sistem Informasi Manajemen Antibiotik</title>
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- AdminLTE -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- SheetJS (Excel) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+    <style>
+        .nav-sidebar .nav-link.active { background-color: #007bff !important; color: white !important; }
+        .content-wrapper { background-color: #f4f6f9; }
+        .card-header { background-color: #fff; border-bottom: 1px solid rgba(0,0,0,.125); }
+        .hidden { display: none; }
+        .status-badge { font-size: 0.85em; padding: 5px 10px; border-radius: 20px; }
+        .bg-pending { background-color: #ffc107; color: #000; }
+        .bg-approved { background-color: #28a745; color: #fff; }
+        .bg-rejected { background-color: #dc3545; color: #fff; }
+        .alert-custom { border-left: 5px solid; }
+    </style>
+</head>
+<body class="hold-transition sidebar-mini layout-fixed">
+<div class="wrapper">
+
+    <!-- Navbar -->
+    <nav class="main-header navbar navbar-expand navbar-white navbar-light">
+        <ul class="navbar-nav">
+            <li class="nav-item">
+                <a class="nav-link" data-widget="pushmenu" href="#" role="button"><i class="fas fa-bars"></i></a>
+            </li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+            <li class="nav-item d-none d-sm-inline-block">
+                <a href="#" class="nav-link">RSUD Aji Muhammad Parikesit</a>
+            </li>
+        </ul>
+    </nav>
+
+    <!-- Sidebar -->
+    <aside class="main-sidebar sidebar-dark-primary elevation-4">
+        <a href="#" class="brand-link">
+            <i class="fas fa-hospital-symbol ml-3 mr-2"></i>
+            <span class="brand-text font-weight-light">SIM-ABX RSAMP</span>
+        </a>
+        <div class="sidebar">
+            <nav class="mt-2">
+                <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
+                    <li class="nav-item">
+                        <a href="#" class="nav-link active" onclick="showSection('dashboard')">
+                            <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="showSection('permintaan')">
+                            <i class="nav-icon fas fa-file-medical"></i><p>Permintaan Antibiotik Reserve</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="showSection('validasi')">
+                            <i class="nav-icon fas fa-check-double"></i><p>Validasi PPRA</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="showSection('pasien')">
+                            <i class="nav-icon fas fa-procedures"></i><p>Manajemen Pasien Aktif</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="showSection('pola_kuman')">
+                            <i class="nav-icon fas fa-bacteria"></i><p>Pola Kuman & Rekomendasi</p>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="showSection('gyssens')">
+                            <i class="nav-icon fas fa-clipboard-list"></i><p>Evaluasi Gyssens</p>
+                        </a>
+                    </li>
+                    <li class="nav-header">PENGATURAN</li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" onclick="showSection('master')">
+                            <i class="nav-icon fas fa-database"></i><p>Master Data (Dropdown)</p>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    </aside>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+        <div class="content-header">
+            <div class="container-fluid">
+                <div class="row mb-2">
+                    <div class="col-sm-6">
+                        <h1 class="m-0" id="page-title">Dashboard</h1>
+                    </div>
+                    <div class="col-sm-6">
+                        <ol class="breadcrumb float-sm-right">
+                            <li class="breadcrumb-item"><a href="#">Home</a></li>
+                            <li class="breadcrumb-item active" id="breadcrumb-title">Dashboard</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <section class="content">
+            <div class="container-fluid">
+
+                <!-- DASHBOARD SECTION -->
+                <div id="section-dashboard" class="section-content">
+                    <div class="row">
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-info">
+                                <div class="inner"><h3 id="dash-total-req">0</h3><p>Total Permintaan Reserve</p></div>
+                                <div class="icon"><i class="fas fa-file-prescription"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-success">
+                                <div class="inner"><h3 id="dash-acc">0</h3><p>Disetujui (ACC)</p></div>
+                                <div class="icon"><i class="fas fa-check"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-danger">
+                                <div class="inner"><h3 id="dash-reject">0</h3><p>Tidak Disetujui</p></div>
+                                <div class="icon"><i class="fas fa-times"></i></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-3 col-6">
+                            <div class="small-box bg-warning">
+                                <div class="inner"><h3 id="dash-pending">0</h3><p>Menunggu Validasi</p></div>
+                                <div class="icon"><i class="fas fa-clock"></i></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card card-primary card-outline">
+                                <div class="card-header"><h3 class="card-title">Permintaan Berdasarkan Dokter Spesialis</h3></div>
+                                <div class="card-body"><canvas id="chartDokter"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card card-success card-outline">
+                                <div class="card-header"><h3 class="card-title">Kepatuhan Terhadap Saran PPRA</h3></div>
+                                <div class="card-body"><canvas id="chartKepatuhan"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card card-info card-outline">
+                                <div class="card-header">
+                                    <h3 class="card-title">Notifikasi Review Prospektif (Hari 3, 5, 7)</h3>
+                                </div>
+                                <div class="card-body p-0" id="notification-area">
+                                    <!-- Diisi via JS -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- FORM PERMINTAAN SECTION -->
+                <div id="section-permintaan" class="section-content hidden">
+                    <div class="card card-primary">
+                        <div class="card-header"><h3 class="card-title">Formulir Permintaan Antibiotik Reserve</h3></div>
+                        <form id="formPermintaan">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>No. Rekam Medis</label>
+                                            <input type="text" class="form-control" id="req_rm" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Nama Pasien</label>
+                                            <input type="text" class="form-control" id="req_nama" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Umur</label>
+                                            <input type="text" class="form-control" id="req_umur" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Ruang Rawat</label>
+                                            <select class="form-control" id="req_ruangan" required></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Dokter Spesialis Peminta (DPJP)</label>
+                                            <select class="form-control" id="req_dokter" required></select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Diagnosa (ICD-10)</label>
+                                            <input type="text" class="form-control" id="req_diagnosa" required placeholder="Ketik diagnosa...">
+                                            <small class="text-muted" id="rekomendasi-ab"></small>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Antibiotik yang Diminta</label>
+                                            <select class="form-control" id="req_antibiotik" required></select>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Dosis & Frekuensi</label>
+                                            <input type="text" class="form-control" id="req_dosis" required placeholder="Contoh: 1g / 8 jam">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Rencana Durasi (Hari)</label>
+                                            <input type="number" class="form-control" id="req_durasi" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Alasan Medis / Justifikasi</label>
+                                            <textarea class="form-control" id="req_alasan" rows="2" required></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Kirim Permintaan</button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Riwayat Permintaan</h3></div>
+                        <div class="card-body table-responsive">
+                            <table class="table table-bordered table-striped" id="tablePermintaan">
+                                <thead>
+                                    <tr>
+                                        <th>Tgl</th>
+                                        <th>Pasien</th>
+                                        <th>Antibiotik</th>
+                                        <th>Dokter Peminta</th>
+                                        <th>Status</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VALIDASI PPRA SECTION -->
+                <div id="section-validasi" class="section-content hidden">
+                    <div class="card card-warning">
+                        <div class="card-header"><h3 class="card-title">Daftar Menunggu Validasi PPRA</h3></div>
+                        <div class="card-body table-responsive">
+                            <table class="table table-bordered" id="tableValidasi">
+                                <thead>
+                                    <tr>
+                                        <th>Pasien & RM</th>
+                                        <th>Antibiotik</th>
+                                        <th>DPJP</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MANAJEMEN PASIEN AKTIF SECTION -->
+                <div id="section-pasien" class="section-content hidden">
+                    <div class="card card-info">
+                        <div class="card-header"><h3 class="card-title">Input Pasien Pengguna Antibiotik (Farmasi)</h3></div>
+                        <form id="formPasien">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group"><label>No. RM</label><input type="text" class="form-control" id="p_rm" required></div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group"><label>Nama Pasien</label><input type="text" class="form-control" id="p_nama" required></div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group"><label>Ruang Rawat</label><select class="form-control" id="p_ruangan" required></select></div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group"><label>Antibiotik</label><select class="form-control" id="p_antibiotik" required></select></div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group"><label>Dosis Harian Total (gram/hari)</label><input type="number" step="0.01" class="form-control" id="p_dosis" required></div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group"><label>Tanggal Mulai</label><input type="date" class="form-control" id="p_tgl_mulai" required></div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group"><label>Rencana Stop (Hari)</label><input type="number" class="form-control" id="p_rencana_stop" value="7"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer">
+                                <button type="submit" class="btn btn-info"><i class="fas fa-plus"></i> Tambah Pasien</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h3 class="card-title">Daftar Pasien Berjalan</h3></div>
+                        <div class="card-body table-responsive">
+                            <table class="table table-bordered" id="tablePasien">
+                                <thead>
+                                    <tr>
+                                        <th>RM</th>
+                                        <th>Nama</th>
+                                        <th>Ruangan</th>
+                                        <th>Antibiotik</th>
+                                        <th>Tgl Mulai</th>
+                                        <th>Hari Ke-</th>
+                                        <th>Status Review</th>
+                                        <th>Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- POLA KUMAN SECTION -->
+                <div id="section-pola_kuman" class="section-content hidden">
+                    <div class="card card-danger">
+                        <div class="card-header"><h3 class="card-title">Peta Medan Kuman RSUD AM Parikesit 2025</h3></div>
+                        <div class="card-body">
+                            <p>Berdasarkan data laporan pola sensitivitas kuman RSAMP 2025:</p>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h5>Top Patogen & Sensitivitas Gram Negatif</h5>
+                                    <ul>
+                                        <li><strong>Klebsiella pneumoniae (133 isolat):</strong> Sensitif Amikacin (97%), Meropenem (80.5%), Piperacillin-Tazobactam (78.4%).</li>
+                                        <li><strong>Escherichia coli (123 isolat):</strong> Sensitif Amikacin (97.4%), Meropenem (86.8%), Piperacillin-Tazobactam (84.3%).</li>
+                                        <li><strong>Acinetobacter baumannii (114 isolat):</strong> Sensitif Colistin (95.2%). (Sangat resisten terhadap sebagian besar antibiotik).</li>
+                                        <li><strong>Pseudomonas aeruginosa (60 isolat):</strong> Sensitif Gentamicin (100%), Amikacin (85%), Meropenem (76.7%), Ceftazidime (75%).</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-6">
+                                    <h5>Top Patogen & Sensitivitas Gram Positif</h5>
+                                    <ul>
+                                        <li><strong>Staphylococcus aureus (127 isolat):</strong> Sensitif Linezolid (94.5%), Vancomycin (89%), Rifampin (89.8%), Ciprofloxacin (81%).</li>
+                                        <li><strong>Staphylococcus haemolyticus (50 isolat):</strong> Sensitif Linezolid (96%), Vancomycin (82%), Teicoplanin (74%).</li>
+                                    </ul>
+                                    <hr>
+                                    <h5>Simulasi Rekomendasi Empiris Berdasarkan Diagnosa</h5>
+                                    <div class="input-group mb-3">
+                                        <input type="text" class="form-control" id="inputDiagnosa" placeholder="Ketik diagnosa (misal: Pneumonia, Sepsis, ISK)...">
+                                        <button class="btn btn-primary" onclick="cariRekomendasi()">Cari Rekomendasi</button>
+                                    </div>
+                                    <div id="hasilRekomendasi" class="alert alert-info hidden"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- GYSSENS SECTION -->
+                <div id="section-gyssens" class="section-content hidden">
+                    <div class="card card-secondary">
+                        <div class="card-header"><h3 class="card-title">Evaluasi Kualitas Penggunaan Antibiotik (Metode Gyssens)</h3></div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label>Pilih Pasien (dari Data Aktif/Selesai)</label>
+                                <select class="form-control" id="gyssens_pasien"></select>
+                            </div>
+                            <button class="btn btn-primary mb-3" onclick="loadGyssensForm()">Tampilkan Form Evaluasi</button>
+                            
+                            <div id="formGyssens" class="hidden">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr><th>Kategori</th><th>Deskripsi</th><th>Pilih</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>0</td><td>Penggunaan antibiotik tepat dan rasional</td><td><input type="radio" name="gyssens_kat" value="0"></td></tr>
+                                        <tr><td>I</td><td>Penggunaan tidak tepat waktu</td><td><input type="radio" name="gyssens_kat" value="I"></td></tr>
+                                        <tr><td>II</td><td>Penggunaan tidak tepat dosis</td><td><input type="radio" name="gyssens_kat" value="II"></td></tr>
+                                        <tr><td>III</td><td>Penggunaan tidak tepat durasi</td><td><input type="radio" name="gyssens_kat" value="III"></td></tr>
+                                        <tr><td>IVa</td><td>Penggunaan tidak tepat indikasi (ada infeksi lain)</td><td><input type="radio" name="gyssens_kat" value="IVa"></td></tr>
+                                        <tr><td>IVb</td><td>Penggunaan tidak tepat indikasi (tidak ada infeksi)</td><td><input type="radio" name="gyssens_kat" value="IVb"></td></tr>
+                                        <tr><td>IVc</td><td>Penggunaan tidak tepat (antibiotik lebih aman tersedia)</td><td><input type="radio" name="gyssens_kat" value="IVc"></td></tr>
+                                        <tr><td>IVd</td><td>Penggunaan tidak tepat (antibiotik lebih efektif tersedia)</td><td><input type="radio" name="gyssens_kat" value="IVd"></td></tr>
+                                        <tr><td>V</td><td>Penggunaan tidak tepat (tidak ada indikasi)</td><td><input type="radio" name="gyssens_kat" value="V"></td></tr>
+                                        <tr><td>VI</td><td>Data rekam medis tidak lengkap</td><td><input type="radio" name="gyssens_kat" value="VI"></td></tr>
+                                    </tbody>
+                                </table>
+                                <div class="form-group">
+                                    <label>Catatan Evaluator</label>
+                                    <textarea class="form-control" id="gyssens_note"></textarea>
+                                </div>
+                                <button class="btn btn-success" onclick="simpanGyssens()">Simpan Evaluasi</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MASTER DATA SECTION -->
+                <div id="section-master" class="section-content hidden">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card card-outline card-primary">
+                                <div class="card-header"><h3 class="card-title">Master Dokter Spesialis</h3></div>
+                                <div class="card-body">
+                                    <form id="formDokter" class="input-group mb-3">
+                                        <input type="text" class="form-control" id="new_dokter" placeholder="Nama Dokter Spesialis..." required>
+                                        <button class="btn btn-primary" type="submit">Tambah</button>
+                                    </form>
+                                    <ul class="list-group" id="listDokter"></ul>
+                                </div>
+                            </div>
+                            <div class="card card-outline card-primary">
+                                <div class="card-header"><h3 class="card-title">Master Ruangan</h3></div>
+                                <div class="card-body">
+                                    <form id="formRuangan" class="input-group mb-3">
+                                        <input type="text" class="form-control" id="new_ruangan" placeholder="Nama Ruangan..." required>
+                                        <button class="btn btn-primary" type="submit">Tambah</button>
+                                    </form>
+                                    <ul class="list-group" id="listRuangan"></ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card card-outline card-primary">
+                                <div class="card-header"><h3 class="card-title">Master Antibiotik & Klasifikasi WHO</h3></div>
+                                <div class="card-body">
+                                    <form id="formAntibiotik" class="row mb-3">
+                                        <div class="col-md-5"><input type="text" class="form-control" id="new_ab_nama" placeholder="Nama Antibiotik" required></div>
+                                        <div class="col-md-4">
+                                            <select class="form-control" id="new_ab_klas" required>
+                                                <option value="Access">Access</option>
+                                                <option value="Watch">Watch</option>
+                                                <option value="Reserve">Reserve</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Tambah</button></div>
+                                    </form>
+                                    <ul class="list-group" id="listAntibiotik"></ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card card-outline card-success mt-3">
+                        <div class="card-header"><h3 class="card-title">Unduh Data Excel per Periode</h3></div>
+                        <div class="card-body">
+                            <div class="row align-items-end">
+                                <div class="col-md-4">
+                                    <label>Dari Tanggal</label>
+                                    <input type="date" class="form-control" id="exp_start">
+                                </div>
+                                <div class="col-md-4">
+                                    <label>Sampai Tanggal</label>
+                                    <input type="date" class="form-control" id="exp_end">
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-success w-100" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Download Excel</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+    </div>
+</div>
+
+<!-- Modal ACC/Reject PPRA -->
+<div class="modal fade" id="modalValidasi" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Validasi Permintaan PPRA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="val_id">
+                <div class="mb-3">
+                    <label>Keputusan</label>
+                    <select class="form-control" id="val_status">
+                        <option value="ACC">ACC (Setujui)</option>
+                        <option value="TOLAK">Tidak ACC (Tolak)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label>Alasan / Saran PPRA</label>
+                    <textarea class="form-control" id="val_alasan" rows="3" required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label>Instruksi Stop (Hari)</label>
+                    <input type="number" class="form-control" id="val_stop" value="7">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                <button type="button" class="btn btn-primary" onclick="simpanValidasi()">Simpan & Kirim PDF</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+
+<script>
+    // ==========================================
+    // STATE & LOCAL STORAGE MANAGEMENT
+    // ==========================================
+    
+    // Data Master Default (Sesuai Standar PPRA/WHO AWaRe)
+    let masterData = {
+        dokter: JSON.parse(localStorage.getItem('md_dokter')) || ['dr. Morfino Yodi Thorasika, Sp.MK', 'dr. Anton Komala, Sp.PD', 'dr. Ria Siska, Sp.P', 'dr. Mustaqim, Sp.BS', 'dr. Paulina, Sp.U'],
+        ruangan: JSON.parse(localStorage.getItem('md_ruangan')) || ['ICU', 'PICU/NICU', 'Punai 1', 'Punai 2', 'Punai 3', 'Enggang 1', 'Enggang 2', 'Enggang 3', 'Elang 3', 'Intermediate', 'HCU'],
+        antibiotik: JSON.parse(localStorage.getItem('md_antibiotik')) || [
+            {nama: 'Meropenem', kelas: 'Reserve'},
+            {nama: 'Vankomisin', kelas: 'Reserve'},
+            {nama: 'Linezolid', kelas: 'Reserve'},
+            {nama: 'Colistin', kelas: 'Reserve'},
+            {nama: 'Piperacillin-Tazobactam', kelas: 'Watch'},
+            {nama: 'Cefepime', kelas: 'Watch'},
+            {nama: 'Ceftriaxone', kelas: 'Watch'},
+            {nama: 'Levofloxacin', kelas: 'Watch'},
+            {nama: 'Amikacin', kelas: 'Access'},
+            {nama: 'Gentamicin', kelas: 'Access'},
+            {nama: 'Ampicillin', kelas: 'Access'}
+        ]
+    };
+
+    let requests = JSON.parse(localStorage.getItem('data_requests')) || [];
+    let patients = JSON.parse(localStorage.getItem('data_patients')) || [];
+    let gyssensData = JSON.parse(localStorage.getItem('data_gyssens')) || [];
+
+    // Initialize 
+    document.addEventListener('DOMContentLoaded', () => {
+        populateDropdowns();
+        renderMasterLists();
+        renderDashboard();
+        renderRequests();
+        renderValidationTable();
+        renderPatients();
+        renderGyssensDropdown();
+        checkNotifications();
+    });
+
+    // ==========================================
+    // NAVIGATION
+    // ==========================================
+    function showSection(section) {
+        $('.section-content').addClass('hidden');
+        $(`#section-${section}`).removeClass('hidden');
+        $('#page-title').text(section.charAt(0).toUpperCase() + section.slice(1).replace('_', ' '));
+        $('#breadcrumb-title').text(section.charAt(0).toUpperCase() + section.slice(1).replace('_', ' '));
+        
+        $('.nav-link').removeClass('active');
+        $(`.nav-link[onclick="showSection('${section}')"]`).addClass('active');
+
+        if(section === 'dashboard') renderDashboard();
+        if(section === 'permintaan') renderRequests();
+        if(section === 'validasi') renderValidationTable();
+        if(section === 'pasien') renderPatients();
+        if(section === 'gyssens') renderGyssensDropdown();
+    }
+
+    // ==========================================
+    // MASTER DATA & DROPDOWNS
+    // ==========================================
+    function populateDropdowns() {
+        // Dropdown Permintaan
+        let optDokter = masterData.dokter.map(d => `<option value="${d}">${d}</option>`).join('');
+        let optRuangan = masterData.ruangan.map(r => `<option value="${r}">${r}</option>`).join('');
+        
+        let optAbReserve = masterData.antibiotik.filter(a => a.kelas === 'Reserve' || a.kelas === 'Watch').map(a => `<option value="${a.nama}">${a.nama} (${a.kelas})</option>`).join('');
+        
+        $('#req_dokter').html(optDokter);
+        $('#req_ruangan').html(optRuangan);
+        $('#req_antibiotik').html(optAbReserve);
+
+        // Dropdown Pasien
+        let optAllAb = masterData.antibiotik.map(a => `<option value="${a.nama}">${a.nama} (${a.kelas})</option>`).join('');
+        $('#p_ruangan').html(optRuangan);
+        $('#p_antibiotik').html(optAllAb);
+    }
+
+    function renderMasterLists() {
+        $('#listDokter').html(masterData.dokter.map(d => `<li class="list-group-item d-flex justify-content-between align-items-center">${d}</li>`).join(''));
+        $('#listRuangan').html(masterData.ruangan.map(r => `<li class="list-group-item d-flex justify-content-between align-items-center">${r}</li>`).join(''));
+        $('#listAntibiotik').html(masterData.antibiotik.map(a => `<li class="list-group-item d-flex justify-content-between align-items-center">${a.nama} <span class="badge bg-secondary">${a.kelas}</span></li>`).join(''));
+    }
+
+    // Form Master Listeners
+    $('#formDokter').submit(function(e) {
+        e.preventDefault();
+        masterData.dokter.push($('#new_dokter').val());
+        localStorage.setItem('md_dokter', JSON.stringify(masterData.dokter));
+        $('#new_dokter').val('');
+        renderMasterLists(); populateDropdowns();
+    });
+    $('#formRuangan').submit(function(e) {
+        e.preventDefault();
+        masterData.ruangan.push($('#new_ruangan').val());
+        localStorage.setItem('md_ruangan', JSON.stringify(masterData.ruangan));
+        $('#new_ruangan').val('');
+        renderMasterLists(); populateDropdowns();
+    });
+    $('#formAntibiotik').submit(function(e) {
+        e.preventDefault();
+        masterData.antibiotik.push({nama: $('#new_ab_nama').val(), kelas: $('#new_ab_klas').val()});
+        localStorage.setItem('md_antibiotik', JSON.stringify(masterData.antibiotik));
+        $('#new_ab_nama').val('');
+        renderMasterLists(); populateDropdowns();
+    });
+
+    // ==========================================
+    // PERMINTAAN RESERVE
+    // ==========================================
+    $('#formPermintaan').submit(function(e) {
+        e.preventDefault();
+        let newReq = {
+            id: Date.now().toString(),
+            tanggal: new Date().toISOString().split('T')[0],
+            rm: $('#req_rm').val(),
+            nama: $('#req_nama').val(),
+            umur: $('#req_umur').val(),
+            ruangan: $('#req_ruangan').val(),
+            dokter: $('#req_dokter').val(),
+            diagnosa: $('#req_diagnosa').val(),
+            antibiotik: $('#req_antibiotik').val(),
+            dosis: $('#req_dosis').val(),
+            durasi: $('#req_durasi').val(),
+            alasan: $('#req_alasan').val(),
+            status: 'PENDING',
+            val_alasan: '',
+            val_stop: ''
+        };
+        requests.push(newReq);
+        localStorage.setItem('data_requests', JSON.stringify(requests));
+        this.reset();
+        renderRequests();
+        alert('Permintaan berhasil dikirim ke PPRA.');
+    });
+
+    function renderRequests() {
+        let html = '';
+        requests.forEach((r, index) => {
+            let badge = r.status === 'PENDING' ? 'bg-pending' : (r.status === 'ACC' ? 'bg-approved' : 'bg-rejected');
+            html += `<tr>
+                <td>${r.tanggal}</td>
+                <td>${r.nama} (${r.rm})<br><small>${r.ruangan}</small></td>
+                <td>${r.antibiotik}</td>
+                <td>${r.dokter}</td>
+                <td><span class="badge status-badge ${badge}">${r.status}</span></td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="cetakPDFPermintaan('${r.id}')"><i class="fas fa-file-pdf"></i> PDF Permintaan</button>
+                    ${r.status !== 'PENDING' ? `<button class="btn btn-sm btn-outline-success" onclick="cetakPDFValidasi('${r.id}')"><i class="fas fa-check-circle"></i> PDF ACC/Tolak</button>` : ''}
+                </td>
+            </tr>`;
+        });
+        $('#tablePermintaan tbody').html(html);
+    }
+
+    // ==========================================
+    // VALIDASI PPRA
+    // ==========================================
+    function renderValidationTable() {
+        let pending = requests.filter(r => r.status === 'PENDING');
+        let html = '';
+        pending.forEach(r => {
+            html += `<tr>
+                <td>${r.nama} (${r.rm})<br><small>Dx: ${r.diagnosa}</small></td>
+                <td>${r.antibiotik} <br><small>${r.dosis} / ${r.durasi} hari</small></td>
+                <td>${r.dokter}</td>
+                <td><button class="btn btn-warning" onclick="openValidasi('${r.id}')"><i class="fas fa-edit"></i> Validasi</button></td>
+            </tr>`;
+        });
+        if(pending.length === 0) html = '<tr><td colspan="4" class="text-center">Tidak ada permintaan menunggu validasi.</td></tr>';
+        $('#tableValidasi tbody').html(html);
+    }
+
+    function openValidasi(id) {
+        $('#val_id').val(id);
+        $('#val_status').val('ACC');
+        $('#val_alasan').val('');
+        $('#val_stop').val('7');
+        new bootstrap.Modal(document.getElementById('modalValidasi')).show();
+    }
+
+    function simpanValidasi() {
+        let id = $('#val_id').val();
+        let req = requests.find(r => r.id === id);
+        if(req) {
+            req.status = $('#val_status').val();
+            req.val_alasan = $('#val_alasan').val();
+            req.val_stop = $('#val_stop').val();
+            localStorage.setItem('data_requests', JSON.stringify(requests));
+            renderValidationTable();
+            renderDashboard();
+            renderRequests();
+            alert('Validasi disimpan.');
+            $('#modalValidasi').hide();
+        }
+    }
+
+    // ==========================================
+    // MANAJEMEN PASIEN & DDD
+    // ==========================================
+    $('#formPasien').submit(function(e) {
+        e.preventDefault();
+        let newP = {
+            id: Date.now().toString(),
+            rm: $('#p_rm').val(),
+            nama: $('#p_nama').val(),
+            ruangan: $('#p_ruangan').val(),
+            antibiotik: $('#p_antibiotik').val(),
+            dosis: parseFloat($('#p_dosis').val()), // gram per hari
+            tgl_mulai: $('#p_tgl_mulai').val(),
+            rencana_stop: parseInt($('#p_rencana_stop').val()),
+            tgl_krs: null,
+            is_discharged: false,
+            gyssens_kat: null
+        };
+        patients.push(newP);
+        localStorage.setItem('data_patients', JSON.stringify(patients));
+        this.reset();
+        renderPatients();
+        alert('Data pasien berhasil ditambahkan.');
+    });
+
+    function renderPatients() {
+        let html = '';
+        patients.forEach(p => {
+            // Hitung Hari
+            let start = new Date(p.tgl_mulai);
+            let end = p.tgl_krs ? new Date(p.tgl_krs) : new Date();
+            let diffTime = Math.abs(end - start);
+            let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+            
+            // Notifikasi Review
+            let statusReview = '';
+            if(!p.is_discharged) {
+                if(diffDays >= p.rencana_stop) {
+                    statusReview = '<span class="badge bg-danger">STOP / REVIEW HARI INI</span>';
+                } else if ([3, 5, 7].includes(diffDays)) {
+                    statusReview = `<span class="badge bg-warning">Review Hari ke-${diffDays}</span>`;
+                } else {
+                    statusReview = '<span class="badge bg-secondary">Berjalan</span>';
+                }
+            } else {
+                statusReview = '<span class="badge bg-success">Selesai (KRS)</span>';
+            }
+
+            html += `<tr>
+                <td>${p.rm}</td>
+                <td>${p.nama}</td>
+                <td>${p.ruangan}</td>
+                <td>${p.antibiotik}</td>
+                <td>${p.tgl_mulai}</td>
+                <td>${p.is_discharged ? '-' : diffDays}</td>
+                <td>${statusReview}</td>
+                <td>
+                    ${!p.is_discharged ? `<button class="btn btn-sm btn-danger" onclick="prosesKRS('${p.id}')"><i class="fas fa-sign-out-alt"></i> KRS (Hitung DDD)</button>` : ''}
+                </td>
+            </tr>`;
+        });
+        if(patients.length === 0) html = '<tr><td colspan="8" class="text-center">Belum ada data pasien.</td></tr>';
+        $('#tablePasien tbody').html(html);
+    }
+
+    function prosesKRS(id) {
+        let p = patients.find(x => x.id === id);
+        if(p && confirm('Proses KRS? DDD akan dihitung otomatis.')) {
+            p.tgl_krs = new Date().toISOString().split('T')[0];
+            p.is_discharged = true;
+            
+            // Hitung DDD
+            let start = new Date(p.tgl_mulai);
+            let end = new Date(p.tgl_krs);
+            let diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) || 1;
+            p.lama_rawat = diffDays;
+            p.total_dosis = p.dosis * diffDays;
+            
+            // Standar DDD WHO (Contoh: Meropenem 3g, Levofloxacin 0.5g, Ceftriaxone 2g)
+            const dddStandar = {
+                'Meropenem': 3,
+                'Vankomisin': 2,
+                'Levofloxacin': 0.5,
+                'Ceftriaxone': 2,
+                'Piperacillin-Tazobactam': 14,
+                'Cefepime': 4,
+                'Amikacin': 1,
+                'Gentamicin': 0.24,
+                'Linezolid': 1.2,
+                'Colistin': 9
+            };
+            
+            let dddVal = dddStandar[p.antibiotik] || 1;
+            p.ddd_100 = (p.total_dosis / dddVal) / p.lama_rawat * 100;
+            
+            localStorage.setItem('data_patients', JSON.stringify(patients));
+            renderPatients();
+            renderDashboard();
+            alert(`Pasien KRS. Total DDD/100 hari rawat inap: ${p.ddd_100.toFixed(2)}`);
+        }
+    }
+
+    // ==========================================
+    // GYSSENS
+    // ==========================================
+    function renderGyssensDropdown() {
+        let opt = '<option value="">-- Pilih Pasien --</option>';
+        patients.forEach(p => {
+            opt += `<option value="${p.id}">${p.nama} (${p.antibiotik}) - ${p.tgl_mulai}</option>`;
+        });
+        $('#gyssens_pasien').html(opt);
+    }
+
+    function loadGyssensForm() {
+        let id = $('#gyssens_pasien').val();
+        if(!id) return alert('Pilih pasien terlebih dahulu');
+        
+        let p = patients.find(x => x.id === id);
+        if(p.gyssens_kat) {
+            $(`input[name="gyssens_kat"][value="${p.gyssens_kat}"]`).prop('checked', true);
+        } else {
+            $('input[name="gyssens_kat"]').prop('checked', false);
+        }
+        $('#gyssens_note').val(p.gyssens_note || '');
+        $('#formGyssens').removeClass('hidden');
+        $('#formGyssens').attr('data-id', id);
+    }
+
+    function simpanGyssens() {
+        let id = $('#formGyssens').attr('data-id');
+        let p = patients.find(x => x.id === id);
+        if(p) {
+            p.gyssens_kat = $('input[name="gyssens_kat"]:checked').val() || null;
+            p.gyssens_note = $('#gyssens_note').val();
+            localStorage.setItem('data_patients', JSON.stringify(patients));
+            alert('Evaluasi Gyssens disimpan.');
+        }
+    }
+
+    // ==========================================
+    // DASHBOARD & CHARTS
+    // ==========================================
+    function renderDashboard() {
+        // Cards
+        let total = requests.length;
+        let acc = requests.filter(r => r.status === 'ACC').length;
+        let rej = requests.filter(r => r.status === 'TOLAK').length;
+        let pend = requests.filter(r => r.status === 'PENDING').length;
+        
+        $('#dash-total-req').text(total);
+        $('#dash-acc').text(acc);
+        $('#dash-reject').text(rej);
+        $('#dash-pending').text(pend);
+
+        // Chart Dokter
+        let dokterCounts = {};
+        requests.forEach(r => { dokterCounts[r.dokter] = (dokterCounts[r.dokter] || 0) + 1; });
+        
+        let ctx1 = document.getElementById('chartDokter').getContext('2d');
+        if(window.chart1) window.chart1.destroy();
+        window.chart1 = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(dokterCounts),
+                datasets: [{
+                    label: 'Jumlah Permintaan',
+                    data: Object.values(dokterCounts),
+                    backgroundColor: '#007bff'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Chart Kepatuhan (Asumsi: ACC vs TOLAK)
+        let ctx2 = document.getElementById('chartKepatuhan').getContext('2d');
+        if(window.chart2) window.chart2.destroy();
+        window.chart2 = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['ACC', 'Tidak ACC'],
+                datasets: [{
+                    data: [acc, rej],
+                    backgroundColor: ['#28a745', '#dc3545']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Notifikasi Review Prospektif
+        let notifHtml = '';
+        patients.filter(p => !p.is_discharged).forEach(p => {
+            let start = new Date(p.tgl_mulai);
+            let diffDays = Math.ceil(Math.abs(new Date() - start) / (1000 * 60 * 60 * 24)) || 1;
+            if([3, 5, 7].includes(diffDays) || diffDays >= p.rencana_stop) {
+                notifHtml += `<div class="alert alert-warning m-2 alert-custom">
+                    <i class="fas fa-bell"></i> <strong>Review Prospektif:</strong> Pasien <b>${p.nama}</b> (${p.antibiotik}) telah menjalani hari ke-<b>${diffDays}</b>. 
+                    ${diffDays >= p.rencana_stop ? '<span class="text-danger">Mencapai batas STOP!</span>' : ''}
+                </div>`;
+            }
+        });
+        $('#notification-area').html(notifHtml || '<p class="p-3 text-muted">Tidak ada notifikasi review hari ini.</p>');
+    }
+
+    function checkNotifications() {
+        // Function called on load, but dashboard handles rendering
+    }
+
+    // ==========================================
+    // REKOMENDASI EMPIRIS (Pola Kuman)
+    // ==========================================
+    function cariRekomendasi() {
+        let dx = $('#inputDiagnosa').val().toLowerCase();
+        let hasil = '';
+
+        if(dx.includes('pneumonia') || dx.includes('cap')) {
+            hasil = `<strong>Pneumonia Komunitas (CAP):</strong><br>
+                     1. Lini 1: Ceftriaxone + Azithromycin (Watch)<br>
+                     2. Jika ESBL Risk: Meropenem (Reserve)<br>
+                     <em>Data Kuman: Klebsiella & E. Coli Sensitif Meropenem (80-86%)</em>`;
+        } else if(dx.includes('isk') || dx.includes('isK') || dx.includes('urosepsis')) {
+            hasil = `<strong>Infeksi Saluran Kemih (ISK):</strong><br>
+                     1. Lini 1: Ceftriaxone (Watch)<br>
+                     2. Jika ESBL Risk: Meropenem (Reserve) atau Amikacin (Access)<br>
+                     <em>Data Kuman: E. Coli Sensitif Meropenem (86.8%), Amikacin (97.4%)</em>`;
+        } else if(dx.includes('sepsis') || dx.includes('syok')) {
+            hasil = `<strong>Sepsis / Syok Sepsis:</strong><br>
+                     1. Empiris: Meropenem (Reserve) + Vankomisin (Reserve)<br>
+                     2. De-eskalasi sesuai kultur<br>
+                     <em>Data Kuman: Patogen tersering Klebsiella, E. Coli, Acinetobacter (Resisten luas, butuh Reserve)</em>`;
+        } else if(dx.includes('abses') || dx.includes('ulkus') || dx.includes('gangren')) {
+            hasil = `<strong>Infeksi Jaringan Lunak / Abses:</strong><br>
+                     1. Lini 1: Ampicillin-Sulbactam atau Ceftriaxone + Metronidazole<br>
+                     2. Jika MRSA Risk: Linezolid / Vankomisin (Reserve)<br>
+                     <em>Data Kuman: Staph aureus (MRSA 60%), Sensitif Linezolid (94.5%), Vankomisin (89%)</em>`;
+        } else {
+            hasil = `<em>Belum ada panduan spesifik untuk diagnosa ini. Silakan merujuk pada pedoman PPAB RSAMP secara umum atau konsultasikan ke PPRA.</em>`;
+        }
+        
+        $('#hasilRekomendasi').removeClass('hidden').html(hasil);
+    }
+
+    // ==========================================
+    // EXPORT EXCEL
+    // ==========================================
+    function exportExcel() {
+        let start = $('#exp_start').val();
+        let end = $('#exp_end').val();
+        
+        if(!start || !end) return alert('Pilih tanggal mulai dan akhir');
+
+        let filtered = requests.filter(r => r.tanggal >= start && r.tanggal <= end);
+        
+        if(filtered.length === 0) return alert('Tidak ada data pada periode tersebut.');
+
+        let ws_data = filtered.map(r => ({
+            'Tanggal': r.tanggal,
+            'No RM': r.rm,
+            'Nama Pasien': r.nama,
+            'Ruangan': r.ruangan,
+            'DPJP Peminta': r.dokter,
+            'Diagnosa': r.diagnosa,
+            'Antibiotik': r.antibiotik,
+            'Dosis': r.dosis,
+            'Durasi': r.durasi,
+            'Status PPRA': r.status,
+            'Saran PPRA': r.val_alasan,
+            'Stop (Hari)': r.val_stop
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(ws_data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Laporan_Antibiotik");
+        XLSX.writeFile(wb, `Laporan_Antibiotik_${start}_${end}.xlsx`);
+    }
+
+    // ==========================================
+    // EXPORT PDF
+    // ==========================================
+    function cetakPDFPermintaan(id) {
+        let r = requests.find(x => x.id === id);
+        if(!r) return;
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.text("FORMULIR PERMINTAAN ANTIBIOTIK RESERVE", 105, 20, { align: "center" });
+        doc.setFontSize(10);
+        doc.text("RSUD AJI MUHAMMAD PARIKESIT", 105, 26, { align: "center" });
+        doc.line(20, 30, 190, 30);
+
+        doc.setFontSize(11);
+        let y = 40;
+        doc.text(`No. RM: ${r.rm}`, 20, y);
+        doc.text(`Nama Pasien: ${r.nama}`, 20, y + 7);
+        doc.text(`Umur: ${r.umur}`, 20, y + 14);
+        doc.text(`Ruang Rawat: ${r.ruangan}`, 20, y + 21);
+        doc.text(`Diagnosa: ${r.diagnosa}`, 20, y + 28);
+        
+        doc.text(`Dokter Peminta: ${r.dokter}`, 120, y);
+        doc.text(`Tanggal: ${r.tanggal}`, 120, y + 7);
+
+        doc.setFontSize(12);
+        doc.text("Detail Antibiotik yang Diminta:", 20, y + 40);
+        doc.setFontSize(11);
+        doc.text(`Nama Antibiotik: ${r.antibiotik}`, 25, y + 48);
+        doc.text(`Dosis & Frekuensi: ${r.dosis}`, 25, y + 55);
+        doc.text(`Rencana Durasi: ${r.durasi} Hari`, 25, y + 62);
+        doc.text(`Alasan Medis:`, 25, y + 69);
+        doc.setFontSize(10);
+        let splitAlasan = doc.splitTextToSize(r.alasan, 160);
+        doc.text(splitAlasan, 25, y + 75);
+
+        doc.setFontSize(11);
+        doc.text("Tanda Tangan Dokter Peminta,", 20, y + 100);
+        doc.text("(_________________________)", 20, y + 120);
+
+        doc.text("Diterima oleh PPRA,", 130, y + 100);
+        doc.text("(_________________________)", 130, y + 120);
+
+        doc.save(`Permintaan_Reserve_${r.nama}.pdf`);
+    }
+
+    function cetakPDFValidasi(id) {
+        let r = requests.find(x => x.id === id);
+        if(!r) return;
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        doc.setFontSize(16);
+        doc.text("LEMBAR VALIDASI ANTIBIOTIK RESERVE OLEH PPRA", 105, 20, { align: "center" });
+        doc.setFontSize(10);
+        doc.text("RSUD AJI MUHAMMAD PARIKESIT", 105, 26, { align: "center" });
+        doc.line(20, 30, 190, 30);
+
+        doc.setFontSize(11);
+        let y = 40;
+        doc.text(`No. RM: ${r.rm}`, 20, y);
+        doc.text(`Nama Pasien: ${r.nama}`, 20, y + 7);
+        doc.text(`Ruang Rawat: ${r.ruangan}`, 20, y + 14);
+        doc.text(`Diagnosa: ${r.diagnosa}`, 20, y + 21);
+        doc.text(`Antibiotik: ${r.antibiotik}`, 20, y + 28);
+        doc.text(`Dokter Peminta: ${r.dokter}`, 20, y + 35);
+
+        doc.setFontSize(12);
+        doc.text("KEPUTUSAN PPRA:", 20, y + 50);
+        doc.setFontSize(14);
+        if(r.status === 'ACC') {
+            doc.setTextColor(0, 128, 0); // Green
+            doc.text("DISETUJUI (ACC)", 25, y + 60);
+        } else {
+            doc.setTextColor(255, 0, 0); // Red
+            doc.text("TIDAK DISETUJUI (TOLAK)", 25, y + 60);
+        }
+        doc.setTextColor(0, 0, 0); // Reset color
+
+        doc.setFontSize(11);
+        doc.text("Alasan / Saran PPRA:", 20, y + 75);
+        doc.setFontSize(10);
+        let splitAlasan = doc.splitTextToSize(r.val_alasan || "-", 160);
+        doc.text(splitAlasan, 25, y + 82);
+
+        doc.setFontSize(11);
+        doc.text(`Instruksi Stop (Hari): ${r.val_stop}`, 20, y + 100);
+
+        doc.text("Dokter Spesialis PPRA,", 130, y + 120);
+        doc.text("(_________________________)", 130, y + 140);
+
+        doc.save(`Validasi_PPRA_${r.nama}.pdf`);
+    }
+</script>
+</body>
+</html>
