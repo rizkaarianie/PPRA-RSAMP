@@ -751,20 +751,40 @@
 
     function renderPatients() {
         let html = '';
-        // Pastikan filter aman untuk data dari Google Sheets (bisa berupa boolean atau string)
-        patients.filter(p => p.is_discharged === false || p.is_discharged === "false" || p.is_discharged === "").forEach(p => {
+        
+        // PENGAMAN 1: Pastikan filter aman untuk boolean/string dan huruf besar/kecil
+        patients.filter(p => {
+            let isDisc = p.is_discharged;
+            if (typeof isDisc === 'string') {
+                return isDisc.toLowerCase() === 'false' || isDisc === '';
+            }
+            return !isDisc;
+        }).forEach(p => {
             try {
-                // Hitung Hari Rawat (LOS)
-                let tglMasuk = new Date(p.tgl_masuk);
+                // PENGAMAN 2: Tangani format tanggal dari Sheets (kadang terbaca objek, kadang string)
+                let tglMasukStr = p.tgl_masuk;
+                if (tglMasukStr instanceof Date) {
+                    // Jika Sheets mengirim objek Date
+                    tglMasukStr = tglMasukStr.toISOString().split('T')[0];
+                }
+                
+                let tglMasuk = new Date(tglMasukStr);
                 let diffDays = Math.ceil(Math.abs(new Date() - tglMasuk) / (1000 * 60 * 60 * 24)) || 1;
                 
                 let abHtml = '';
                 let reviewNeeded = false;
                 
-                // PENGAMAN 1: Pastikan antibiotic_list adalah Array (bukan string dari GS)
+                // PENGAMAN 3: Pastikan antibiotic_list dibaca dengan benar
                 let abList = p.antibiotic_list;
                 if (typeof abList === 'string') {
-                    try { abList = JSON.parse(abList); } catch(e) { abList = []; }
+                    try { 
+                        // Ganti kutip ganda di dalam JSON dengan kutip tunggal agar valid
+                        let fixedJson = abList.replace(/"/g, "'"); 
+                        abList = JSON.parse(fixedJson); 
+                    } catch(e) { 
+                        console.error("Gagal parse JSON:", abList);
+                        abList = []; 
+                    }
                 }
                 if (!Array.isArray(abList)) abList = [];
 
@@ -779,7 +799,7 @@
 
                 let statusReview = reviewNeeded ? `<span class="badge bg-warning">Perlu Review</span>` : '<span class="badge bg-secondary">Berjalan</span>';
 
-                // PENGAMAN 2: Pastikan ID dibungkus string
+                // PENGAMAN 4: Pastikan ID diubah ke string murni
                 let safeId = `'${p.id}'`;
 
                 html += `<tr>
@@ -787,7 +807,7 @@
                     <td>${p.nama}</td>
                     <td>${p.ruangan}</td>
                     <td>${abHtml}</td>
-                    <td>${p.tgl_masuk}</td>
+                    <td>${tglMasukStr}</td>
                     <td>${diffDays}</td>
                     <td>${statusReview}</td>
                     <td>
@@ -798,12 +818,11 @@
                 </tr>`;
             } catch (err) {
                 console.error("Error merender pasien:", p.nama, err);
-                // Tetap tampilkan baris meskipun ada data yang error
                 html += `<tr>
                     <td>${p.rm || '-'}</td>
                     <td>${p.nama || '-'}</td>
                     <td>${p.ruangan || '-'}</td>
-                    <td colspan="4" class="text-danger">Data korup/error: ${err.message}</td>
+                    <td colspan="4" class="text-danger">Data korup: ${err.message}</td>
                     <td><button type="button" class="btn btn-sm btn-secondary" disabled>Error</button></td>
                 </tr>`;
             }
@@ -814,23 +833,46 @@
     }
 
     async function prosesKRS(id) {
-        let p = patients.find(x => x.id === id);
+        let p = patients.find(x => x.id == id); // Gunakan == bukan === untuk mengantisipasi beda tipe data
         if(p && confirm('Proses KRS? Data DDD akan dihitung dan diupdate ke database.')) {
-            p.tgl_krs = new Date().toISOString().split('T')[0];
+            
+            // Format Tanggal KRS hari ini
+            let today = new Date();
+            let tglKrsStr = today.toISOString().split('T')[0];
+            
+            p.tgl_krs = tglKrsStr;
             p.is_discharged = true;
             
-            let start = new Date(p.tgl_masuk); let end = new Date(p.tgl_krs);
+            // Hitung LOS (Lama Rawat)
+            let start = new Date(p.tgl_masuk);
+            let end = new Date(tglKrsStr);
             p.los = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) || 1;
 
-            p.antibiotic_list.forEach(ab => {
+            // Parsing antibiotic_list jika masih berupa string
+            let abList = p.antibiotic_list;
+            if (typeof abList === 'string') {
+                try { 
+                    let fixedJson = abList.replace(/"/g, "'"); 
+                    abList = JSON.parse(fixedJson); 
+                } catch(e) { abList = []; }
+            }
+            if (!Array.isArray(abList)) abList = [];
+
+            // Hitung DDD per Antibiotik
+            abList.forEach(ab => {
                 let masterAb = masterData.antibiotik.find(m => m.nama === ab.nama);
                 let dddStandar = masterAb ? masterAb.ddd : 1; 
-                let abStart = new Date(ab.tgl_mulai); let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : end;
+                
+                let abStart = new Date(ab.tgl_mulai); 
+                let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : end;
+                
                 ab.lot = Math.ceil(Math.abs(abEnd - abStart) / (1000 * 60 * 60 * 24)) || 1;
                 ab.total_dosis = ab.dosis * ab.lot;
                 ab.ddd_total = ab.total_dosis / dddStandar;
                 ab.ddd_100 = (ab.ddd_total / p.los) * 100;
             });
+
+            p.antibiotic_list = abList; // Simpan kembali array yang sudah dihitung
 
             $('#loading-overlay').show();
             try {
@@ -838,12 +880,13 @@
                 if(res && res.status === 'success') {
                     renderPatients();
                     renderDashboard();
-                    alert(`Pasien KRS. LOS: ${p.los} hari. Data DDD tersimpan di Google Sheets.`);
+                    alert(`Pasien KRS. LOS: ${p.los} hari. Data DDD tersimpan.`);
                 } else {
-                    p.is_discharged = false; p.tgl_krs = "";
                     alert('Gagal update ke database.');
                 }
-            } catch(e) { alert('Error koneksi.'); }
+            } catch(e) { 
+                alert('Error koneksi saat menyimpan KRS.'); 
+            }
             $('#loading-overlay').hide();
         }
     }
