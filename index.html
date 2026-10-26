@@ -751,13 +751,20 @@
 
     function renderPatients() {
         let html = '';
-        patients.filter(p => p.is_discharged === false).forEach(p => {
+        patients.filter(p => p.is_discharged === false || p.is_discharged === "false" || p.is_discharged === "").forEach(p => {
+            
+            // Hitung Hari Rawat (LOS) berjalan
             let tglMasuk = new Date(p.tgl_masuk);
             let diffDays = Math.ceil(Math.abs(new Date() - tglMasuk) / (1000 * 60 * 60 * 24)) || 1;
             
             let abHtml = '';
             let reviewNeeded = false;
-            p.antibiotic_list.forEach(ab => {
+            
+            // Pastikan antibiotic_list berformat array (karena dari GS bisa berupa string JSON)
+            let abList = typeof p.antibiotic_list === 'string' ? JSON.parse(p.antibiotic_list) : p.antibiotic_list;
+            if(!Array.isArray(abList)) abList = [];
+
+            abList.forEach(ab => {
                 let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : new Date();
                 let abDiff = Math.ceil(Math.abs(abEnd - new Date(ab.tgl_mulai)) / (1000 * 60 * 60 * 24)) || 1;
                 if([3, 5, 7].includes(abDiff)) reviewNeeded = true;
@@ -768,11 +775,25 @@
 
             let statusReview = reviewNeeded ? `<span class="badge bg-warning">Perlu Review</span>` : '<span class="badge bg-secondary">Berjalan</span>';
 
+            // KUNCI PERBAIKAN: Pastikan ID diubah menjadi string murni dengan bungkus kutip tunggal
+            let safeId = `'${p.id}'`;
+
             html += `<tr>
-                <td>${p.rm}</td><td>${p.nama}</td><td>${p.ruangan}</td><td>${abHtml}</td><td>${p.tgl_masuk}</td><td>${diffDays}</td><td>${statusReview}</td>
-                <td><button class="btn btn-sm btn-danger" onclick="prosesKRS('${p.id}')"><i class="fas fa-sign-out-alt"></i> KRS (Hitung DDD)</button></td>
+                <td>${p.rm}</td>
+                <td>${p.nama}</td>
+                <td>${p.ruangan}</td>
+                <td>${abHtml}</td>
+                <td>${p.tgl_masuk}</td>
+                <td>${diffDays}</td>
+                <td>${statusReview}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-danger" onclick="prosesKRS(${safeId})">
+                        <i class="fas fa-sign-out-alt"></i> KRS (Hitung DDD)
+                    </button>
+                </td>
             </tr>`;
         });
+        
         if(html === '') html = '<tr><td colspan="8" class="text-center">Belum ada data pasien berjalan.</td></tr>';
         $('#tablePasien tbody').html(html);
     }
