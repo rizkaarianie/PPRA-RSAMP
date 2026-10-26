@@ -867,17 +867,6 @@
         });
 
         let labelsAb = Object.keys(dddTotalPerAb);
-        if(window.chartDDDTotal) window.chartDDDTotal.destroy();
-        window.chartDDDTotal = new Chart(document.getElementById('chartDDDTotal').getContext('2d'), {
-            type: 'bar', data: { labels: labelsAb.length ? labelsAb : ['Tidak ada data'], datasets: [{ label: 'Total DDD', data: labelsAb.length ? Object.values(dddTotalPerAb) : [0], backgroundColor: '#ffc107' }] },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-
-        if(window.chartDDD100) window.chartDDD100.destroy();
-        window.chartDDD100 = new Chart(document.getElementById('chartDDD100').getContext('2d'), {
-            type: 'bar', data: { labels: labelsAb.length ? labelsAb : ['Tidak ada data'], datasets: [{ label: 'DDD / 100 Hari Rawat Inap', data: labelsAb.length ? Object.values(ddd100PerAb) : [0], backgroundColor: '#dc3545' }] },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
 
         let totalEvaluated = patients.filter(p => p.gyssens_kat).length;
         $('#gys-total').text(totalEvaluated);
