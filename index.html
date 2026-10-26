@@ -32,7 +32,7 @@
 <!-- Loading Overlay -->
 <div id="loading-overlay">
     <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
-    <h4 class="mt-3 text-primary">Menghubungkan ke Database...</h4>
+    <h4 class="mt-3 text-primary">Menghubungkan ke Database Google Sheets...</h4>
 </div>
 
 <div class="wrapper">
@@ -397,7 +397,7 @@
 
 <script>
     // ==========================================
-    // KONFIGURASI API GOOGLE APPS SCRIPT
+    // KONFIGURASI API GOOGLE APPS SCRIPT ANDA
     // ==========================================
     const API_URL = 'https://script.google.com/macros/s/AKfycbzl2xmEtknKhJybXXQIvrCAyRE8aPpJuVMC8ZhDQSNW1wm9OCRpCq1AGSBfi7K-K3uCuA/exec'; 
     
@@ -426,7 +426,7 @@
             let options = { method: method, redirect: 'follow' };
 
             if (method === 'POST') {
-                options.headers = { 'Content-Type': 'text/plain;charset=utf-8' }; // text/plain avoids CORS preflight
+                options.headers = { 'Content-Type': 'text/plain;charset=utf-8' }; 
                 options.body = JSON.stringify(payload);
             }
 
@@ -444,9 +444,7 @@
     // INISIALISASI APLIKASI
     // ----------------------------------------------------
     document.addEventListener('DOMContentLoaded', async () => {
-        // Load Data dari Google Sheets saat pertama kali dibuka
         await fetchDataFromSheets();
-        
         populateDropdowns();
         renderMasterLists();
         renderDashboard();
@@ -454,8 +452,6 @@
         renderValidationTable();
         renderPatients();
         renderGyssensDropdown();
-        
-        // Sembunyikan overlay loading
         $('#loading-overlay').fadeOut();
     });
 
