@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SIM-ABX RSAMP | Sistem Informasi Manajemen Antibiotik</title>
+    <title>SIM-ABX RSAMP | Sistem Informasi Manajemen Antibiotik Terintegrasi</title>
     <!-- Bootstrap 5 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- FontAwesome -->
@@ -28,6 +28,8 @@
         .bg-approved { background-color: #28a745; color: #fff; }
         .bg-rejected { background-color: #dc3545; color: #fff; }
         .alert-custom { border-left: 5px solid; }
+        .ab-list-item { background: #f8f9fa; padding: 10px; border-radius: 5px; margin-bottom: 10px; border: 1px solid #dee2e6; }
+        .dashboard-filter { background: #fff; padding: 15px; border-radius: 5px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="hold-transition sidebar-mini layout-fixed">
@@ -58,12 +60,12 @@
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                     <li class="nav-item">
                         <a href="#" class="nav-link active" onclick="showSection('dashboard')">
-                            <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p>
+                            <i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard Terpadu</p>
                         </a>
                     </li>
                     <li class="nav-item">
                         <a href="#" class="nav-link" onclick="showSection('permintaan')">
-                            <i class="nav-icon fas fa-file-medical"></i><p>Permintaan Antibiotik Reserve</p>
+                            <i class="nav-icon fas fa-file-medical"></i><p>Permintaan Antibiotik</p>
                         </a>
                     </li>
                     <li class="nav-item">
@@ -89,7 +91,7 @@
                     <li class="nav-header">PENGATURAN</li>
                     <li class="nav-item">
                         <a href="#" class="nav-link" onclick="showSection('master')">
-                            <i class="nav-icon fas fa-database"></i><p>Master Data (Dropdown)</p>
+                            <i class="nav-icon fas fa-database"></i><p>Master Data & DDD WHO</p>
                         </a>
                     </li>
                 </ul>
@@ -103,7 +105,7 @@
             <div class="container-fluid">
                 <div class="row mb-2">
                     <div class="col-sm-6">
-                        <h1 class="m-0" id="page-title">Dashboard</h1>
+                        <h1 class="m-0" id="page-title">Dashboard Terpadu</h1>
                     </div>
                     <div class="col-sm-6">
                         <ol class="breadcrumb float-sm-right">
@@ -117,8 +119,51 @@
         <section class="content">
             <div class="container-fluid">
 
-                <!-- DASHBOARD SECTION -->
+                <!-- DASHBOARD TERPADU SECTION -->
                 <div id="section-dashboard" class="section-content">
+                    
+                    <!-- FILTER DASHBOARD -->
+                    <div class="dashboard-filter">
+                        <h5><i class="fas fa-filter"></i> Filter Periode & KSM (Untuk DDD & Statistik)</h5>
+                        <div class="row align-items-end mt-2">
+                            <div class="col-md-3">
+                                <label>Periode Waktu</label>
+                                <select class="form-control" id="dash_periode_type" onchange="togglePeriodeInput()">
+                                    <option value="bulan">Bulanan</option>
+                                    <option value="triwulan">Triwulan</option>
+                                    <option value="tahun">Tahunan</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3" id="input_bulan">
+                                <label>Bulan</label>
+                                <input type="month" class="form-control" id="dash_bulan" value="2026-10">
+                            </div>
+                            <div class="col-md-3 hidden" id="input_triwulan">
+                                <label>Triwulan</label>
+                                <select class="form-control" id="dash_triwulan">
+                                    <option value="Q1">Q1 (Jan-Mar)</option>
+                                    <option value="Q2">Q2 (Apr-Jun)</option>
+                                    <option value="Q3">Q3 (Jul-Sep)</option>
+                                    <option value="Q4">Q4 (Okt-Des)</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3 hidden" id="input_tahun">
+                                <label>Tahun</label>
+                                <input type="number" class="form-control" id="dash_tahun" value="2026">
+                            </div>
+                            <div class="col-md-3">
+                                <label>KSM / Ruangan</label>
+                                <select class="form-control" id="dash_ksm">
+                                    <option value="Semua">Semua KSM/Ruangan</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-primary w-100" onclick="renderDashboard()"><i class="fas fa-sync"></i> Terapkan Filter</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- CARDS UTAMA -->
                     <div class="row">
                         <div class="col-lg-3 col-6">
                             <div class="small-box bg-info">
@@ -146,21 +191,62 @@
                         </div>
                     </div>
 
+                    <!-- STATISTIK DOKTER & KEPATUHAN -->
                     <div class="row">
                         <div class="col-md-6">
                             <div class="card card-primary card-outline">
-                                <div class="card-header"><h3 class="card-title">Permintaan Berdasarkan Dokter Spesialis</h3></div>
-                                <div class="card-body"><canvas id="chartDokter"></canvas></div>
+                                <div class="card-header"><h3 class="card-title">Top 5 Dokter Peminta Antibiotik</h3></div>
+                                <div class="card-body"><canvas id="chartDokter" height="150"></canvas></div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="card card-success card-outline">
                                 <div class="card-header"><h3 class="card-title">Kepatuhan Terhadap Saran PPRA</h3></div>
-                                <div class="card-body"><canvas id="chartKepatuhan"></canvas></div>
+                                <div class="card-body"><canvas id="chartKepatuhan" height="150"></canvas></div>
                             </div>
                         </div>
                     </div>
-                    
+
+                    <!-- DASHBOARD DDD -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card card-warning card-outline">
+                                <div class="card-header"><h3 class="card-title">Total DDD per Antibiotik (Periode Terpilih)</h3></div>
+                                <div class="card-body"><canvas id="chartDDDTotal" height="200"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card card-danger card-outline">
+                                <div class="card-header"><h3 class="card-title">DDD / 100 Hari Rawat Inap (Periode Terpilih)</h3></div>
+                                <div class="card-body"><canvas id="chartDDD100" height="200"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- GYSSENS DASHBOARD SUMMARY -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="card card-secondary card-outline">
+                                <div class="card-header"><h3 class="card-title">Evaluasi Gyssens (Keseluruhan)</h3></div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <div class="small-box bg-secondary"><div class="inner"><h3 id="gys-total">0</h3><p>Total Dievaluasi</p></div></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="small-box bg-success"><div class="inner"><h3 id="gys-rasional">0</h3><p>Rasional (0)</p></div></div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="small-box bg-danger"><div class="inner"><h3 id="gys-tidak-rasional">0</h3><p>Tidak Rasional (I-VI)</p></div></div>
+                                        </div>
+                                    </div>
+                                    <canvas id="chartGyssens" height="100"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- NOTIFIKASI REVIEW -->
                     <div class="row">
                         <div class="col-12">
                             <div class="card card-info card-outline">
@@ -183,49 +269,25 @@
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>No. Rekam Medis</label>
-                                            <input type="text" class="form-control" id="req_rm" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Nama Pasien</label>
-                                            <input type="text" class="form-control" id="req_nama" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Umur</label>
-                                            <input type="text" class="form-control" id="req_umur" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Ruang Rawat</label>
-                                            <select class="form-control" id="req_ruangan" required></select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Dokter Spesialis Peminta (DPJP)</label>
-                                            <select class="form-control" id="req_dokter" required></select>
-                                        </div>
+                                        <div class="form-group"><label>No. Rekam Medis</label><input type="text" class="form-control" id="req_rm" required></div>
+                                        <div class="form-group"><label>Nama Pasien</label><input type="text" class="form-control" id="req_nama" required></div>
+                                        <div class="form-group"><label>Umur</label><input type="text" class="form-control" id="req_umur" required></div>
+                                        <div class="form-group"><label>Ruang Rawat (KSM)</label><select class="form-control" id="req_ruangan" required></select></div>
+                                        <div class="form-group"><label>Dokter Spesialis Peminta (DPJP)</label><select class="form-control" id="req_dokter" required></select></div>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="form-group">
-                                            <label>Diagnosa (ICD-10)</label>
-                                            <input type="text" class="form-control" id="req_diagnosa" required placeholder="Ketik diagnosa...">
-                                            <small class="text-muted" id="rekomendasi-ab"></small>
+                                        <div class="form-group"><label>Diagnosa (ICD-10)</label><input type="text" class="form-control" id="req_diagnosa" required></div>
+                                        <div class="form-group"><label>Antibiotik yang Diminta</label><select class="form-control" id="req_antibiotik" required></select></div>
+                                        <div class="form-group"><label>Dosis & Frekuensi</label><input type="text" class="form-control" id="req_dosis" required placeholder="Contoh: 1g / 8 jam"></div>
+                                        <div class="form-group"><label>Tipe Penggunaan</label>
+                                            <select class="form-control" id="req_tipe" required>
+                                                <option value="Empiris">Empiris</option>
+                                                <option value="Definitif">Definitif</option>
+                                                <option value="Profilaksis">Profilaksis</option>
+                                            </select>
                                         </div>
-                                        <div class="form-group">
-                                            <label>Antibiotik yang Diminta</label>
-                                            <select class="form-control" id="req_antibiotik" required></select>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Dosis & Frekuensi</label>
-                                            <input type="text" class="form-control" id="req_dosis" required placeholder="Contoh: 1g / 8 jam">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Rencana Durasi (Hari)</label>
-                                            <input type="number" class="form-control" id="req_durasi" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Alasan Medis / Justifikasi</label>
-                                            <textarea class="form-control" id="req_alasan" rows="2" required></textarea>
-                                        </div>
+                                        <div class="form-group"><label>Rencana Durasi (Hari)</label><input type="number" class="form-control" id="req_durasi" required></div>
+                                        <div class="form-group"><label>Alasan Medis / Justifikasi</label><textarea class="form-control" id="req_alasan" rows="2" required></textarea></div>
                                     </div>
                                 </div>
                             </div>
@@ -240,14 +302,7 @@
                         <div class="card-body table-responsive">
                             <table class="table table-bordered table-striped" id="tablePermintaan">
                                 <thead>
-                                    <tr>
-                                        <th>Tgl</th>
-                                        <th>Pasien</th>
-                                        <th>Antibiotik</th>
-                                        <th>Dokter Peminta</th>
-                                        <th>Status</th>
-                                        <th>Aksi</th>
-                                    </tr>
+                                    <tr><th>Tgl</th><th>Pasien</th><th>Antibiotik</th><th>Dokter Peminta</th><th>Status</th><th>Aksi</th></tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
@@ -262,12 +317,7 @@
                         <div class="card-body table-responsive">
                             <table class="table table-bordered" id="tableValidasi">
                                 <thead>
-                                    <tr>
-                                        <th>Pasien & RM</th>
-                                        <th>Antibiotik</th>
-                                        <th>DPJP</th>
-                                        <th>Aksi</th>
-                                    </tr>
+                                    <tr><th>Pasien & RM</th><th>Antibiotik</th><th>DPJP</th><th>Aksi</th></tr>
                                 </thead>
                                 <tbody></tbody>
                             </table>
@@ -282,31 +332,51 @@
                         <form id="formPasien">
                             <div class="card-body">
                                 <div class="row">
-                                    <div class="col-md-4">
-                                        <div class="form-group"><label>No. RM</label><input type="text" class="form-control" id="p_rm" required></div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group"><label>Nama Pasien</label><input type="text" class="form-control" id="p_nama" required></div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group"><label>Ruang Rawat</label><select class="form-control" id="p_ruangan" required></select></div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group"><label>Antibiotik</label><select class="form-control" id="p_antibiotik" required></select></div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group"><label>Dosis Harian Total (gram/hari)</label><input type="number" step="0.01" class="form-control" id="p_dosis" required></div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group"><label>Tanggal Mulai</label><input type="date" class="form-control" id="p_tgl_mulai" required></div>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <div class="form-group"><label>Rencana Stop (Hari)</label><input type="number" class="form-control" id="p_rencana_stop" value="7"></div>
+                                    <div class="col-md-3"><div class="form-group"><label>No. RM</label><input type="text" class="form-control" id="p_rm" required></div></div>
+                                    <div class="col-md-3"><div class="form-group"><label>Nama Pasien</label><input type="text" class="form-control" id="p_nama" required></div></div>
+                                    <div class="col-md-3"><div class="form-group"><label>Ruangan (KSM)</label><select class="form-control" id="p_ruangan" required></select></div></div>
+                                    <div class="col-md-3"><div class="form-group"><label>Tanggal Masuk RS</label><input type="date" class="form-control" id="p_tgl_masuk" required></div></div>
+                                </div>
+                                
+                                <hr>
+                                <h5>Daftar Antibiotik yang Digunakan</h5>
+                                <div id="container_ab_pasien">
+                                    <!-- Baris Antibiotik 1 -->
+                                    <div class="row ab-row mb-2" data-index="0">
+                                        <div class="col-md-3">
+                                            <label>Antibiotik</label>
+                                            <select class="form-control ab-select" required></select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Tipe</label>
+                                            <select class="form-control ab-tipe" required>
+                                                <option value="Empiris">Empiris</option>
+                                                <option value="Definitif">Definitif</option>
+                                                <option value="Profilaksis">Profilaksis</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Dosis (gram/hari)</label>
+                                            <input type="number" step="0.01" class="form-control ab-dosis" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Tgl Mulai AB</label>
+                                            <input type="date" class="form-control ab-mulai" required>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Tgl Stop AB</label>
+                                            <input type="date" class="form-control ab-stop">
+                                            <small class="text-muted">Kosongkan jika masih berjalan</small>
+                                        </div>
+                                        <div class="col-md-1 d-flex align-items-end">
+                                            <button type="button" class="btn btn-danger btn-sm w-100" onclick="hapusBarisAb(this)" disabled><i class="fas fa-trash"></i></button>
+                                        </div>
                                     </div>
                                 </div>
+                                <button type="button" class="btn btn-secondary btn-sm mb-3" onclick="tambahBarisAb()"><i class="fas fa-plus"></i> Tambah Antibiotik Lain</button>
                             </div>
                             <div class="card-footer">
-                                <button type="submit" class="btn btn-info"><i class="fas fa-plus"></i> Tambah Pasien</button>
+                                <button type="submit" class="btn btn-info"><i class="fas fa-save"></i> Simpan Data Pasien</button>
                             </div>
                         </form>
                     </div>
@@ -320,7 +390,8 @@
                                         <th>RM</th>
                                         <th>Nama</th>
                                         <th>Ruangan</th>
-                                        <th>Antibiotik</th>
+                                        <th>Antibiotik & Tipe</th>
+                                        <th>Dosis</th>
                                         <th>Tgl Mulai</th>
                                         <th>Hari Ke-</th>
                                         <th>Status Review</th>
@@ -338,7 +409,6 @@
                     <div class="card card-danger">
                         <div class="card-header"><h3 class="card-title">Peta Medan Kuman RSUD AM Parikesit 2025</h3></div>
                         <div class="card-body">
-                            <p>Berdasarkan data laporan pola sensitivitas kuman RSAMP 2025:</p>
                             <div class="row">
                                 <div class="col-md-6">
                                     <h5>Top Patogen & Sensitivitas Gram Negatif</h5>
@@ -368,56 +438,20 @@
                     </div>
                 </div>
 
-                <!-- GYSSENS SECTION DENGAN DASHBOARD -->
+                <!-- GYSSENS SECTION -->
                 <div id="section-gyssens" class="section-content hidden">
-                    <!-- Dashboard Gyssens -->
-                    <div class="row mb-3">
-                        <div class="col-lg-4 col-12">
-                            <div class="small-box bg-secondary">
-                                <div class="inner"><h3 id="gys-total">0</h3><p>Total Pasien Dievaluasi</p></div>
-                                <div class="icon"><i class="fas fa-clipboard-check"></i></div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4 col-12">
-                            <div class="small-box bg-success">
-                                <div class="inner"><h3 id="gys-rasional">0</h3><p>Rasional (Kategori 0)</p></div>
-                                <div class="icon"><i class="fas fa-check-circle"></i></div>
-                            </div>
-                        </div>
-                        <div class="col-lg-4 col-12">
-                            <div class="small-box bg-danger">
-                                <div class="inner"><h3 id="gys-tidak-rasional">0</h3><p>Tidak Rasional (I - VI)</p></div>
-                                <div class="icon"><i class="fas fa-times-circle"></i></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mb-3">
-                        <div class="col-md-12">
-                            <div class="card card-outline card-secondary">
-                                <div class="card-header"><h3 class="card-title">Grafik Distribusi Kategori Gyssens</h3></div>
-                                <div class="card-body">
-                                    <canvas id="chartGyssens" height="100"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Form Evaluasi -->
                     <div class="card card-secondary">
                         <div class="card-header"><h3 class="card-title">Form Evaluasi Kualitas Penggunaan Antibiotik (Metode Gyssens)</h3></div>
                         <div class="card-body">
                             <div class="form-group">
-                                <label>Pilih Pasien (dari Data Aktif/Selesai)</label>
+                                <label>Pilih Pasien</label>
                                 <select class="form-control" id="gyssens_pasien"></select>
                             </div>
                             <button class="btn btn-primary mb-3" onclick="loadGyssensForm()">Tampilkan Form Evaluasi</button>
                             
                             <div id="formGyssens" class="hidden">
                                 <table class="table table-bordered">
-                                    <thead>
-                                        <tr><th>Kategori</th><th>Deskripsi</th><th>Pilih</th></tr>
-                                    </thead>
+                                    <thead><tr><th>Kategori</th><th>Deskripsi</th><th>Pilih</th></tr></thead>
                                     <tbody>
                                         <tr><td>0</td><td>Penggunaan antibiotik tepat dan rasional</td><td><input type="radio" name="gyssens_kat" value="0"></td></tr>
                                         <tr><td>I</td><td>Penggunaan tidak tepat waktu</td><td><input type="radio" name="gyssens_kat" value="I"></td></tr>
@@ -440,20 +474,11 @@
                         </div>
                     </div>
 
-                    <!-- Tabel Tracking Gyssens -->
                     <div class="card card-outline card-info">
                         <div class="card-header"><h3 class="card-title">Tracking Hasil Evaluasi Gyssens</h3></div>
                         <div class="card-body table-responsive">
                             <table class="table table-bordered table-striped" id="tableGyssensTracking">
-                                <thead>
-                                    <tr>
-                                        <th>Nama Pasien</th>
-                                        <th>Antibiotik</th>
-                                        <th>Ruangan</th>
-                                        <th>Kategori Gyssens</th>
-                                        <th>Catatan</th>
-                                    </tr>
-                                </thead>
+                                <thead><tr><th>Nama Pasien</th><th>Antibiotik</th><th>Ruangan</th><th>Kategori Gyssens</th><th>Catatan</th></tr></thead>
                                 <tbody></tbody>
                             </table>
                         </div>
@@ -475,7 +500,7 @@
                                 </div>
                             </div>
                             <div class="card card-outline card-primary">
-                                <div class="card-header"><h3 class="card-title">Master Ruangan</h3></div>
+                                <div class="card-header"><h3 class="card-title">Master Ruangan (KSM)</h3></div>
                                 <div class="card-body">
                                     <form id="formRuangan" class="input-group mb-3">
                                         <input type="text" class="form-control" id="new_ruangan" placeholder="Nama Ruangan..." required>
@@ -487,18 +512,19 @@
                         </div>
                         <div class="col-md-6">
                             <div class="card card-outline card-primary">
-                                <div class="card-header"><h3 class="card-title">Master Antibiotik & Klasifikasi WHO</h3></div>
+                                <div class="card-header"><h3 class="card-title">Master Antibiotik, Kelas WHO & Nilai DDD</h3></div>
                                 <div class="card-body">
                                     <form id="formAntibiotik" class="row mb-3">
-                                        <div class="col-md-5"><input type="text" class="form-control" id="new_ab_nama" placeholder="Nama Antibiotik" required></div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-4"><input type="text" class="form-control" id="new_ab_nama" placeholder="Nama Antibiotik" required></div>
+                                        <div class="col-md-3">
                                             <select class="form-control" id="new_ab_klas" required>
                                                 <option value="Access">Access</option>
                                                 <option value="Watch">Watch</option>
                                                 <option value="Reserve">Reserve</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-3"><button class="btn btn-primary w-100" type="submit">Tambah</button></div>
+                                        <div class="col-md-3"><input type="number" step="0.01" class="form-control" id="new_ab_ddd" placeholder="DDD (gram)" required></div>
+                                        <div class="col-md-2"><button class="btn btn-primary w-100" type="submit">Add</button></div>
                                     </form>
                                     <ul class="list-group" id="listAntibiotik"></ul>
                                 </div>
@@ -510,17 +536,9 @@
                         <div class="card-header"><h3 class="card-title">Unduh Data Excel per Periode</h3></div>
                         <div class="card-body">
                             <div class="row align-items-end">
-                                <div class="col-md-4">
-                                    <label>Dari Tanggal</label>
-                                    <input type="date" class="form-control" id="exp_start">
-                                </div>
-                                <div class="col-md-4">
-                                    <label>Sampai Tanggal</label>
-                                    <input type="date" class="form-control" id="exp_end">
-                                </div>
-                                <div class="col-md-4">
-                                    <button class="btn btn-success w-100" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Download Excel</button>
-                                </div>
+                                <div class="col-md-4"><label>Dari Tanggal</label><input type="date" class="form-control" id="exp_start"></div>
+                                <div class="col-md-4"><label>Sampai Tanggal</label><input type="date" class="form-control" id="exp_end"></div>
+                                <div class="col-md-4"><button class="btn btn-success w-100" onclick="exportExcel()"><i class="fas fa-file-excel"></i> Download Excel</button></div>
                             </div>
                         </div>
                     </div>
@@ -541,6 +559,13 @@
             </div>
             <div class="modal-body">
                 <input type="hidden" id="val_id">
+                <div class="mb-3">
+                    <label>Dokter Spesialis PPRA (Yang Meng-ACC)</label>
+                    <select class="form-control" id="val_dokter_ppra">
+                        <option value="dr. Ferdika Suhendra, Sp.OG">dr. Ferdika Suhendra, Sp.OG</option>
+                        <option value="dr. Morfino Yodi Thorasika, Sp. MK">dr. Morfino Yodi Thorasika, Sp. MK</option>
+                    </select>
+                </div>
                 <div class="mb-3">
                     <label>Keputusan</label>
                     <select class="form-control" id="val_status">
@@ -575,28 +600,27 @@
     // STATE & LOCAL STORAGE MANAGEMENT
     // ==========================================
     
-    // Data Master Default (Sesuai Standar PPRA/WHO AWaRe)
+    // Master Data (Ditambahkan nilai DDD Standar WHO dalam gram)
     let masterData = {
         dokter: JSON.parse(localStorage.getItem('md_dokter')) || ['dr. Morfino Yodi Thorasika, Sp.MK', 'dr. Anton Komala, Sp.PD', 'dr. Ria Siska, Sp.P', 'dr. Mustaqim, Sp.BS', 'dr. Paulina, Sp.U'],
         ruangan: JSON.parse(localStorage.getItem('md_ruangan')) || ['ICU', 'PICU/NICU', 'Punai 1', 'Punai 2', 'Punai 3', 'Enggang 1', 'Enggang 2', 'Enggang 3', 'Elang 3', 'Intermediate', 'HCU'],
         antibiotik: JSON.parse(localStorage.getItem('md_antibiotik')) || [
-            {nama: 'Meropenem', kelas: 'Reserve'},
-            {nama: 'Vankomisin', kelas: 'Reserve'},
-            {nama: 'Linezolid', kelas: 'Reserve'},
-            {nama: 'Colistin', kelas: 'Reserve'},
-            {nama: 'Piperacillin-Tazobactam', kelas: 'Watch'},
-            {nama: 'Cefepime', kelas: 'Watch'},
-            {nama: 'Ceftriaxone', kelas: 'Watch'},
-            {nama: 'Levofloxacin', kelas: 'Watch'},
-            {nama: 'Amikacin', kelas: 'Access'},
-            {nama: 'Gentamicin', kelas: 'Access'},
-            {nama: 'Ampicillin', kelas: 'Access'}
+            {nama: 'Meropenem', kelas: 'Reserve', ddd: 3},
+            {nama: 'Vankomisin', kelas: 'Reserve', ddd: 2},
+            {nama: 'Linezolid', kelas: 'Reserve', ddd: 1.2},
+            {nama: 'Colistin', kelas: 'Reserve', ddd: 9},
+            {nama: 'Piperacillin-Tazobactam', kelas: 'Watch', ddd: 14},
+            {nama: 'Cefepime', kelas: 'Watch', ddd: 4},
+            {nama: 'Ceftriaxone', kelas: 'Watch', ddd: 2},
+            {nama: 'Levofloxacin', kelas: 'Watch', ddd: 0.5},
+            {nama: 'Amikacin', kelas: 'Access', ddd: 1},
+            {nama: 'Gentamicin', kelas: 'Access', ddd: 0.24},
+            {nama: 'Ampicillin', kelas: 'Access', ddd: 6}
         ]
     };
 
     let requests = JSON.parse(localStorage.getItem('data_requests')) || [];
     let patients = JSON.parse(localStorage.getItem('data_patients')) || [];
-    let gyssensData = JSON.parse(localStorage.getItem('data_gyssens')) || [];
 
     // Initialize 
     document.addEventListener('DOMContentLoaded', () => {
@@ -607,8 +631,6 @@
         renderValidationTable();
         renderPatients();
         renderGyssensDropdown();
-        renderGyssensDashboard(); // Panggil dashboard Gyssens saat load
-        checkNotifications();
     });
 
     // ==========================================
@@ -627,36 +649,48 @@
         if(section === 'permintaan') renderRequests();
         if(section === 'validasi') renderValidationTable();
         if(section === 'pasien') renderPatients();
-        if(section === 'gyssens') {
-            renderGyssensDropdown();
-            renderGyssensDashboard(); // Render ulang saat menu dibuka
-        }
+        if(section === 'gyssens') renderGyssensDropdown();
+    }
+
+    function togglePeriodeInput() {
+        let type = $('#dash_periode_type').val();
+        $('#input_bulan').addClass('hidden');
+        $('#input_triwulan').addClass('hidden');
+        $('#input_tahun').addClass('hidden');
+
+        if(type === 'bulan') $('#input_bulan').removeClass('hidden');
+        if(type === 'triwulan') $('#input_triwulan').removeClass('hidden');
+        if(type === 'tahun') $('#input_tahun').removeClass('hidden');
     }
 
     // ==========================================
     // MASTER DATA & DROPDOWNS
     // ==========================================
     function populateDropdowns() {
-        // Dropdown Permintaan
         let optDokter = masterData.dokter.map(d => `<option value="${d}">${d}</option>`).join('');
         let optRuangan = masterData.ruangan.map(r => `<option value="${r}">${r}</option>`).join('');
         
-        let optAbReserve = masterData.antibiotik.filter(a => a.kelas === 'Reserve' || a.kelas === 'Watch').map(a => `<option value="${a.nama}">${a.nama} (${a.kelas})</option>`).join('');
-        
         $('#req_dokter').html(optDokter);
         $('#req_ruangan').html(optRuangan);
+        
+        // Master Antibiotik Dropdown
+        let optAbReserve = masterData.antibiotik.map(a => `<option value="${a.nama}">${a.nama} (${a.kelas})</option>`).join('');
         $('#req_antibiotik').html(optAbReserve);
 
-        // Dropdown Pasien
-        let optAllAb = masterData.antibiotik.map(a => `<option value="${a.nama}">${a.nama} (${a.kelas})</option>`).join('');
+        // Dropdown Pasien (Ruangan & Antibiotik)
         $('#p_ruangan').html(optRuangan);
-        $('#p_antibiotik').html(optAllAb);
+        $('.ab-select').each(function() {
+            $(this).html(optAbReserve);
+        });
+
+        // Dashboard KSM Filter
+        $('#dash_ksm').html(`<option value="Semua">Semua KSM/Ruangan</option>` + optRuangan);
     }
 
     function renderMasterLists() {
-        $('#listDokter').html(masterData.dokter.map(d => `<li class="list-group-item d-flex justify-content-between align-items-center">${d}</li>`).join(''));
-        $('#listRuangan').html(masterData.ruangan.map(r => `<li class="list-group-item d-flex justify-content-between align-items-center">${r}</li>`).join(''));
-        $('#listAntibiotik').html(masterData.antibiotik.map(a => `<li class="list-group-item d-flex justify-content-between align-items-center">${a.nama} <span class="badge bg-secondary">${a.kelas}</span></li>`).join(''));
+        $('#listDokter').html(masterData.dokter.map(d => `<li class="list-group-item">${d}</li>`).join(''));
+        $('#listRuangan').html(masterData.ruangan.map(r => `<li class="list-group-item">${r}</li>`).join(''));
+        $('#listAntibiotik').html(masterData.antibiotik.map(a => `<li class="list-group-item d-flex justify-content-between align-items-center">${a.nama} <span><span class="badge bg-secondary me-2">${a.kelas}</span> <span class="badge bg-info">DDD: ${a.ddd} g</span></span></li>`).join(''));
     }
 
     // Form Master Listeners
@@ -676,9 +710,14 @@
     });
     $('#formAntibiotik').submit(function(e) {
         e.preventDefault();
-        masterData.antibiotik.push({nama: $('#new_ab_nama').val(), kelas: $('#new_ab_klas').val()});
+        masterData.antibiotik.push({
+            nama: $('#new_ab_nama').val(), 
+            kelas: $('#new_ab_klas').val(),
+            ddd: parseFloat($('#new_ab_ddd').val())
+        });
         localStorage.setItem('md_antibiotik', JSON.stringify(masterData.antibiotik));
         $('#new_ab_nama').val('');
+        $('#new_ab_ddd').val('');
         renderMasterLists(); populateDropdowns();
     });
 
@@ -697,12 +736,14 @@
             dokter: $('#req_dokter').val(),
             diagnosa: $('#req_diagnosa').val(),
             antibiotik: $('#req_antibiotik').val(),
+            tipe: $('#req_tipe').val(),
             dosis: $('#req_dosis').val(),
             durasi: $('#req_durasi').val(),
             alasan: $('#req_alasan').val(),
             status: 'PENDING',
             val_alasan: '',
-            val_stop: ''
+            val_stop: '',
+            val_dokter_ppra: ''
         };
         requests.push(newReq);
         localStorage.setItem('data_requests', JSON.stringify(requests));
@@ -713,17 +754,17 @@
 
     function renderRequests() {
         let html = '';
-        requests.forEach((r, index) => {
+        requests.forEach((r) => {
             let badge = r.status === 'PENDING' ? 'bg-pending' : (r.status === 'ACC' ? 'bg-approved' : 'bg-rejected');
             html += `<tr>
                 <td>${r.tanggal}</td>
                 <td>${r.nama} (${r.rm})<br><small>${r.ruangan}</small></td>
-                <td>${r.antibiotik}</td>
+                <td>${r.antibiotik} <br><small>${r.tipe}</small></td>
                 <td>${r.dokter}</td>
                 <td><span class="badge status-badge ${badge}">${r.status}</span></td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="cetakPDFPermintaan('${r.id}')"><i class="fas fa-file-pdf"></i> PDF Permintaan</button>
-                    ${r.status !== 'PENDING' ? `<button class="btn btn-sm btn-outline-success" onclick="cetakPDFValidasi('${r.id}')"><i class="fas fa-check-circle"></i> PDF ACC/Tolak</button>` : ''}
+                    <button class="btn btn-sm btn-outline-primary" onclick="cetakPDFPermintaan('${r.id}')"><i class="fas fa-file-pdf"></i> Form Permintaan</button>
+                    ${r.status !== 'PENDING' ? `<button class="btn btn-sm btn-outline-success" onclick="cetakPDFValidasi('${r.id}')"><i class="fas fa-check-circle"></i> Lembar Validasi</button>` : ''}
                 </td>
             </tr>`;
         });
@@ -763,11 +804,52 @@
             req.status = $('#val_status').val();
             req.val_alasan = $('#val_alasan').val();
             req.val_stop = $('#val_stop').val();
+            req.val_dokter_ppra = $('#val_dokter_ppra').val();
+            
+            // AUTO SYNC KE MANAJEMEN PASIEN JIKA ACC
+            if(req.status === 'ACC') {
+                // Cek apakah pasien sudah ada di list aktif
+                let existingPatient = patients.find(p => p.rm === req.rm && !p.is_discharged);
+                
+                if(!existingPatient) {
+                    // Buat pasien baru otomatis dari data ACC
+                    let newP = {
+                        id: Date.now().toString(),
+                        rm: req.rm,
+                        nama: req.nama,
+                        ruangan: req.ruangan,
+                        tgl_masuk: req.tanggal, // Asumsi tanggal request = tgl masuk
+                        is_discharged: false,
+                        gyssens_kat: null,
+                        gyssens_note: '',
+                        antibiotic_list: [{
+                            nama: req.antibiotik,
+                            tipe: req.tipe,
+                            dosis: parseFloat(req.dosis) || 1, // Default 1 jika gagal parse
+                            tgl_mulai: req.tanggal,
+                            tgl_stop: ''
+                        }]
+                    };
+                    patients.push(newP);
+                } else {
+                    // Jika sudah ada, tambahkan antibiotik ke list pasien tersebut
+                    existingPatient.antibiotic_list.push({
+                        nama: req.antibiotik,
+                        tipe: req.tipe,
+                        dosis: parseFloat(req.dosis) || 1,
+                        tgl_mulai: req.tanggal,
+                        tgl_stop: ''
+                    });
+                }
+                localStorage.setItem('data_patients', JSON.stringify(patients));
+                renderPatients(); // Refresh tabel pasien
+            }
+
             localStorage.setItem('data_requests', JSON.stringify(requests));
             renderValidationTable();
             renderDashboard();
             renderRequests();
-            alert('Validasi disimpan.');
+            alert('Validasi disimpan. ' + (req.status === 'ACC' ? 'Data otomatis masuk ke Pasien Aktif.' : ''));
             $('#modalValidasi').hide();
         }
     }
@@ -775,24 +857,105 @@
     // ==========================================
     // MANAJEMEN PASIEN & DDD
     // ==========================================
+    
+    // Fungsi untuk menambah baris input antibiotik
+    function tambahBarisAb() {
+        let container = $('#container_ab_pasien');
+        let index = container.find('.ab-row').length;
+        
+        let optAb = masterData.antibiotik.map(a => `<option value="${a.nama}">${a.nama} (${a.kelas})</option>`).join('');
+        
+        let html = `<div class="row ab-row mb-2" data-index="${index}">
+            <div class="col-md-3">
+                <select class="form-control ab-select" required>${optAb}</select>
+            </div>
+            <div class="col-md-2">
+                <select class="form-control ab-tipe" required>
+                    <option value="Empiris">Empiris</option>
+                    <option value="Definitif">Definitif</option>
+                    <option value="Profilaksis">Profilaksis</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <input type="number" step="0.01" class="form-control ab-dosis" required placeholder="Dosis (g)">
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control ab-mulai" required>
+            </div>
+            <div class="col-md-2">
+                <input type="date" class="form-control ab-stop">
+            </div>
+            <div class="col-md-1 d-flex align-items-end">
+                <button type="button" class="btn btn-danger btn-sm w-100" onclick="hapusBarisAb(this)"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>`;
+        
+        container.append(html);
+        
+        // Enable tombol hapus di baris pertama jika lebih dari 1
+        if(container.find('.ab-row').length > 1) {
+            container.find('.ab-row:first .btn-danger').prop('disabled', false);
+        }
+    }
+
+    function hapusBarisAb(btn) {
+        $(btn).closest('.ab-row').remove();
+        if($('#container_ab_pasien').find('.ab-row').length === 1) {
+            $('#container_ab_pasien').find('.ab-row:first .btn-danger').prop('disabled', true);
+        }
+    }
+
     $('#formPasien').submit(function(e) {
         e.preventDefault();
+        
+        let abList = [];
+        $('.ab-row').each(function() {
+            let abNama = $(this).find('.ab-select').val();
+            let abDosis = parseFloat($(this).find('.ab-dosis').val());
+            let abMulai = $(this).find('.ab-mulai').val();
+            let abStop = $(this).find('.ab-stop').val();
+            let abTipe = $(this).find('.ab-tipe').val();
+            
+            if(abNama && abDosis && abMulai) {
+                abList.push({
+                    nama: abNama,
+                    dosis: abDosis,
+                    tgl_mulai: abMulai,
+                    tgl_stop: abStop,
+                    tipe: abTipe
+                });
+            }
+        });
+
+        if(abList.length === 0) return alert("Minimal isi 1 data antibiotik.");
+
         let newP = {
             id: Date.now().toString(),
             rm: $('#p_rm').val(),
             nama: $('#p_nama').val(),
             ruangan: $('#p_ruangan').val(),
-            antibiotik: $('#p_antibiotik').val(),
-            dosis: parseFloat($('#p_dosis').val()), // gram per hari
-            tgl_mulai: $('#p_tgl_mulai').val(),
-            rencana_stop: parseInt($('#p_rencana_stop').val()),
-            tgl_krs: null,
+            tgl_masuk: $('#p_tgl_masuk').val(),
             is_discharged: false,
-            gyssens_kat: null
+            gyssens_kat: null,
+            gyssens_note: '',
+            antibiotic_list: abList
         };
+        
         patients.push(newP);
         localStorage.setItem('data_patients', JSON.stringify(patients));
         this.reset();
+        // Reset form ab rows
+        $('#container_ab_pasien').html(`
+            <div class="row ab-row mb-2" data-index="0">
+                <div class="col-md-3"><label>Antibiotik</label><select class="form-control ab-select" required></select></div>
+                <div class="col-md-2"><label>Tipe</label><select class="form-control ab-tipe" required><option value="Empiris">Empiris</option><option value="Definitif">Definitif</option><option value="Profilaksis">Profilaksis</option></select></div>
+                <div class="col-md-2"><label>Dosis (gram/hari)</label><input type="number" step="0.01" class="form-control ab-dosis" required></div>
+                <div class="col-md-2"><label>Tgl Mulai AB</label><input type="date" class="form-control ab-mulai" required></div>
+                <div class="col-md-2"><label>Tgl Stop AB</label><input type="date" class="form-control ab-stop"></div>
+                <div class="col-md-1 d-flex align-items-end"><button type="button" class="btn btn-danger btn-sm w-100" onclick="hapusBarisAb(this)" disabled><i class="fas fa-trash"></i></button></div>
+            </div>
+        `);
+        populateDropdowns();
         renderPatients();
         alert('Data pasien berhasil ditambahkan.');
     });
@@ -800,22 +963,37 @@
     function renderPatients() {
         let html = '';
         patients.forEach(p => {
-            // Hitung Hari
-            let start = new Date(p.tgl_mulai);
-            let end = p.tgl_krs ? new Date(p.tgl_krs) : new Date();
-            let diffTime = Math.abs(end - start);
-            let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1;
+            // Hitung Hari Rawat (LOS)
+            let tglMasuk = new Date(p.tgl_masuk);
+            let tglKeluar = p.tgl_krs ? new Date(p.tgl_krs) : new Date();
+            let diffDays = Math.ceil(Math.abs(tglKeluar - tglMasuk) / (1000 * 60 * 60 * 24)) || 1;
             
+            // Tampilkan List Antibiotik
+            let abHtml = '';
+            p.antibiotic_list.forEach(ab => {
+                let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : new Date();
+                let abDiff = Math.ceil(Math.abs(abEnd - new Date(ab.tgl_mulai)) / (1000 * 60 * 60 * 24)) || 1;
+                
+                let badgeTipe = ab.tipe === 'Empiris' ? 'bg-info' : (ab.tipe === 'Definitif' ? 'bg-success' : 'bg-secondary');
+                
+                abHtml += `<div class="ab-list-item mb-1 p-2">
+                    <b>${ab.nama}</b> <span class="badge ${badgeTipe}">${ab.tipe}</span><br>
+                    <small>Dosis: ${ab.dosis} g/hr | Mulai: ${ab.tgl_mulai} | Hari ke-${abDiff}</small>
+                </div>`;
+            });
+
             // Notifikasi Review
             let statusReview = '';
             if(!p.is_discharged) {
-                if(diffDays >= p.rencana_stop) {
-                    statusReview = '<span class="badge bg-danger">STOP / REVIEW HARI INI</span>';
-                } else if ([3, 5, 7].includes(diffDays)) {
-                    statusReview = `<span class="badge bg-warning">Review Hari ke-${diffDays}</span>`;
-                } else {
-                    statusReview = '<span class="badge bg-secondary">Berjalan</span>';
-                }
+                // Cek apakah ada AB yang mencapai hari 3, 5, 7
+                let reviewNeeded = false;
+                p.antibiotic_list.forEach(ab => {
+                    let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : new Date();
+                    let abDiff = Math.ceil(Math.abs(abEnd - new Date(ab.tgl_mulai)) / (1000 * 60 * 60 * 24)) || 1;
+                    if([3, 5, 7].includes(abDiff)) reviewNeeded = true;
+                });
+                
+                statusReview = reviewNeeded ? `<span class="badge bg-warning">Perlu Review</span>` : '<span class="badge bg-secondary">Berjalan</span>';
             } else {
                 statusReview = '<span class="badge bg-success">Selesai (KRS)</span>';
             }
@@ -824,8 +1002,8 @@
                 <td>${p.rm}</td>
                 <td>${p.nama}</td>
                 <td>${p.ruangan}</td>
-                <td>${p.antibiotik}</td>
-                <td>${p.tgl_mulai}</td>
+                <td>${abHtml}</td>
+                <td>${p.tgl_masuk}</td>
                 <td>${p.is_discharged ? '-' : diffDays}</td>
                 <td>${statusReview}</td>
                 <td>
@@ -833,60 +1011,196 @@
                 </td>
             </tr>`;
         });
-        if(patients.length === 0) html = '<tr><td colspan="8" class="text-center">Belum ada data pasien.</td></tr>';
+        if(patients.length === 0) html = '<tr><td colspan="9" class="text-center">Belum ada data pasien.</td></tr>';
         $('#tablePasien tbody').html(html);
     }
 
     function prosesKRS(id) {
         let p = patients.find(x => x.id === id);
-        if(p && confirm('Proses KRS? DDD akan dihitung otomatis.')) {
+        if(p && confirm('Proses KRS? Data DDD akan dihitung otomatis.')) {
             p.tgl_krs = new Date().toISOString().split('T')[0];
             p.is_discharged = true;
             
-            // Hitung DDD
-            let start = new Date(p.tgl_mulai);
+            // Hitung LOS (Lama Rawat Inap)
+            let start = new Date(p.tgl_masuk);
             let end = new Date(p.tgl_krs);
-            let diffDays = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) || 1;
-            p.lama_rawat = diffDays;
-            p.total_dosis = p.dosis * diffDays;
-            
-            // Standar DDD WHO (Contoh: Meropenem 3g, Levofloxacin 0.5g, Ceftriaxone 2g)
-            const dddStandar = {
-                'Meropenem': 3,
-                'Vankomisin': 2,
-                'Levofloxacin': 0.5,
-                'Ceftriaxone': 2,
-                'Piperacillin-Tazobactam': 14,
-                'Cefepime': 4,
-                'Amikacin': 1,
-                'Gentamicin': 0.24,
-                'Linezolid': 1.2,
-                'Colistin': 9
-            };
-            
-            let dddVal = dddStandar[p.antibiotik] || 1;
-            p.ddd_100 = (p.total_dosis / dddVal) / p.lama_rawat * 100;
-            
+            p.los = Math.ceil(Math.abs(end - start) / (1000 * 60 * 60 * 24)) || 1;
+
+            // Hitung DDD per Antibiotik
+            p.antibiotic_list.forEach(ab => {
+                // Cari standar DDD
+                let masterAb = masterData.antibiotik.find(m => m.nama === ab.nama);
+                let dddStandar = masterAb ? masterAb.ddd : 1; 
+
+                // Lama Penggunaan AB (LOT)
+                let abStart = new Date(ab.tgl_mulai);
+                let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : end; // Jika tidak diisi, pakai tgl KRS
+                ab.lot = Math.ceil(Math.abs(abEnd - abStart) / (1000 * 60 * 60 * 24)) || 1;
+                
+                // Total Dosis (gram)
+                ab.total_dosis = ab.dosis * ab.lot;
+                
+                // DDD Total = Total Dosis / DDD Standar
+                ab.ddd_total = ab.total_dosis / dddStandar;
+                
+                // DDD/100 Hari Rawat = (DDD Total / LOS) * 100
+                ab.ddd_100 = (ab.ddd_total / p.los) * 100;
+            });
+
             localStorage.setItem('data_patients', JSON.stringify(patients));
             renderPatients();
             renderDashboard();
-            alert(`Pasien KRS. Total DDD/100 hari rawat inap: ${p.ddd_100.toFixed(2)}`);
+            alert(`Pasien KRS. LOS: ${p.los} hari. DDD dihitung berdasarkan lama penggunaan AB.`);
         }
     }
 
     // ==========================================
-    // GYSSENS (DASHBOARD & FORM)
+    // DASHBOARD TERPADU (DDD, PERMINTAAN, DOKTER, GYSSENS)
     // ==========================================
-    function renderGyssensDropdown() {
-        let opt = '<option value="">-- Pilih Pasien --</option>';
-        patients.forEach(p => {
-            opt += `<option value="${p.id}">${p.nama} (${p.antibiotik}) - ${p.tgl_mulai}</option>`;
-        });
-        $('#gyssens_pasien').html(opt);
-    }
+    function renderDashboard() {
+        // --- 1. FILTER LOGIC ---
+        let filterType = $('#dash_periode_type').val();
+        let filterBulan = $('#dash_bulan').val(); // YYYY-MM
+        let filterTriwulan = $('#dash_triwulan').val(); // Q1, Q2...
+        let filterTahun = $('#dash_tahun').val();
+        let filterKSM = $('#dash_ksm').val();
+        
+        let now = new Date();
+        let targetYear = filterTahun || now.getFullYear();
+        let startDate, endDate;
 
-    function renderGyssensDashboard() {
-        // 1. Hitung Statistik
+        if(filterType === 'bulan') {
+            if(!filterBulan) filterBulan = now.toISOString().slice(0, 7);
+            startDate = new Date(filterBulan + '-01');
+            endDate = new Date(startDate.getFullYear(), startDate.getMonth() + 1, 0);
+        } else if(filterType === 'triwulan') {
+            let monthStart = { Q1: 0, Q2: 3, Q3: 6, Q4: 9 };
+            let s = monthStart[filterTriwulan];
+            startDate = new Date(targetYear, s, 1);
+            endDate = new Date(targetYear, s + 3, 0);
+        } else {
+            startDate = new Date(targetYear, 0, 1);
+            endDate = new Date(targetYear, 11, 31);
+        }
+
+        function inPeriod(dateStr) {
+            if(!dateStr) return false;
+            let d = new Date(dateStr);
+            return d >= startDate && d <= endDate;
+        }
+
+        function inKSM(ruang) {
+            if(filterKSM === 'Semua') return true;
+            return ruang === filterKSM;
+        }
+
+        // --- 2. STATISTIK PERMINTAAN ---
+        let filteredRequests = requests.filter(r => inPeriod(r.tanggal) && inKSM(r.ruangan));
+        
+        let total = filteredRequests.length;
+        let acc = filteredRequests.filter(r => r.status === 'ACC').length;
+        let rej = filteredRequests.filter(r => r.status === 'TOLAK').length;
+        let pend = filteredRequests.filter(r => r.status === 'PENDING').length;
+        
+        $('#dash-total-req').text(total);
+        $('#dash-acc').text(acc);
+        $('#dash-reject').text(rej);
+        $('#dash-pending').text(pend);
+
+        // --- 3. TOP DOKTER PERMINTAAN ---
+        let dokterCounts = {};
+        filteredRequests.forEach(r => { dokterCounts[r.dokter] = (dokterCounts[r.dokter] || 0) + 1; });
+        
+        // Sortir Top 5
+        let sortedDokter = Object.entries(dokterCounts).sort((a,b) => b[1]-a[1]).slice(0, 5);
+        let labelsDokter = sortedDokter.map(d => d[0]);
+        let dataDokter = sortedDokter.map(d => d[1]);
+
+        let ctx1 = document.getElementById('chartDokter').getContext('2d');
+        if(window.chart1) window.chart1.destroy();
+        window.chart1 = new Chart(ctx1, {
+            type: 'bar',
+            data: {
+                labels: labelsDokter.length ? labelsDokter : ['Tidak ada data'],
+                datasets: [{
+                    label: 'Jumlah Permintaan',
+                    data: dataDokter.length ? dataDokter : [0],
+                    backgroundColor: '#007bff'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y' }
+        });
+
+        // --- 4. KEPATUHAN PPRA ---
+        let ctx2 = document.getElementById('chartKepatuhan').getContext('2d');
+        if(window.chart2) window.chart2.destroy();
+        window.chart2 = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: ['ACC', 'Tidak ACC'],
+                datasets: [{
+                    data: [acc, rej],
+                    backgroundColor: ['#28a745', '#dc3545']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // --- 5. PERHITUNGAN DDD (Berdasarkan Pasien yang KRS di periode tsb) ---
+        // Filter pasien yang KRS-nya masuk dalam periode filter
+        let filteredPatients = patients.filter(p => p.is_discharged && inPeriod(p.tgl_krs) && inKSM(p.ruangan));
+        
+        let dddTotalPerAb = {};
+        let ddd100PerAb = {};
+
+        filteredPatients.forEach(p => {
+            p.antibiotic_list.forEach(ab => {
+                if(ab.ddd_total && ab.ddd_100) {
+                    dddTotalPerAb[ab.nama] = (dddTotalPerAb[ab.nama] || 0) + ab.ddd_total;
+                    // Rata-rata DDD/100 hari per AB (Akumulasi total / total LOS pasien pengguna AB tsb * 100)
+                    // Untuk simplifikasi dashboard, kita jumlahkan DDD/100 per pasien
+                    ddd100PerAb[ab.nama] = (ddd100PerAb[ab.nama] || 0) + ab.ddd_100;
+                }
+            });
+        });
+
+        // Render Chart DDD Total
+        let labelsAb = Object.keys(dddTotalPerAb);
+        let dataDddTotal = Object.values(dddTotalPerAb);
+        
+        let ctx3 = document.getElementById('chartDDDTotal').getContext('2d');
+        if(window.chartDDDTotal) window.chartDDDTotal.destroy();
+        window.chartDDDTotal = new Chart(ctx3, {
+            type: 'bar',
+            data: {
+                labels: labelsAb.length ? labelsAb : ['Tidak ada data'],
+                datasets: [{
+                    label: 'Total DDD',
+                    data: dataDddTotal.length ? dataDddTotal : [0],
+                    backgroundColor: '#ffc107'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // Render Chart DDD / 100 Hari
+        let dataDdd100 = Object.values(ddd100PerAb);
+        let ctx4 = document.getElementById('chartDDD100').getContext('2d');
+        if(window.chartDDD100) window.chartDDD100.destroy();
+        window.chartDDD100 = new Chart(ctx4, {
+            type: 'bar',
+            data: {
+                labels: labelsAb.length ? labelsAb : ['Tidak ada data'],
+                datasets: [{
+                    label: 'DDD / 100 Hari Rawat Inap',
+                    data: dataDdd100.length ? dataDdd100 : [0],
+                    backgroundColor: '#dc3545'
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // --- 6. GYSSENS DASHBOARD SUMMARY (Keseluruhan) ---
         let totalEvaluated = patients.filter(p => p.gyssens_kat !== null && p.gyssens_kat !== undefined).length;
         let rasional = patients.filter(p => p.gyssens_kat === '0').length;
         let tidakRasional = totalEvaluated - rasional;
@@ -895,63 +1209,63 @@
         $('#gys-rasional').text(rasional);
         $('#gys-tidak-rasional').text(tidakRasional);
 
-        // 2. Siapkan Data Grafik
         const categories = ['0', 'I', 'II', 'III', 'IVa', 'IVb', 'IVc', 'IVd', 'V', 'VI'];
         let counts = { '0':0, 'I':0, 'II':0, 'III':0, 'IVa':0, 'IVb':0, 'IVc':0, 'IVd':0, 'V':0, 'VI':0 };
         
         patients.forEach(p => {
-            if(p.gyssens_kat && counts[p.gyssens_kat] !== undefined) {
-                counts[p.gyssens_kat]++;
-            }
+            if(p.gyssens_kat && counts[p.gyssens_kat] !== undefined) counts[p.gyssens_kat]++;
         });
 
-        let chartData = categories.map(c => counts[c]);
+        let chartDataGys = categories.map(c => counts[c]);
 
-        // 3. Render Grafik
-        let ctx = document.getElementById('chartGyssens').getContext('2d');
-        if(window.chartGyssens) window.chartGyssens.destroy();
+        let ctxGys = document.getElementById('chartGyssens').getContext('2d');
+        if(window.chartGyssensDash) window.chartGyssensDash.destroy();
         
-        window.chartGyssens = new Chart(ctx, {
+        window.chartGyssensDash = new Chart(ctxGys, {
             type: 'bar',
             data: {
                 labels: categories,
                 datasets: [{
                     label: 'Jumlah Pasien',
-                    data: chartData,
+                    data: chartDataGys,
                     backgroundColor: [
-                        '#28a745', // 0 (Hijau)
-                        '#ffc107', '#ffc107', '#ffc107', // I, II, III (Kuning)
-                        '#fd7e14', '#fd7e14', '#fd7e14', '#fd7e14', // IVa-d (Oranye)
-                        '#dc3545', // V (Merah)
-                        '#6c757d'  // VI (Abu)
+                        '#28a745', '#ffc107', '#ffc107', '#ffc107', 
+                        '#fd7e14', '#fd7e14', '#fd7e14', '#fd7e14', 
+                        '#dc3545', '#6c757d'
                     ]
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: { beginAtZero: true, ticks: { stepSize: 1 } }
-                }
-            }
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
         });
 
-        // 4. Render Tabel Tracking
-        let tableHtml = '';
-        patients.forEach(p => {
-            if(p.gyssens_kat) {
-                let badgeColor = p.gyssens_kat === '0' ? 'bg-success' : (p.gyssens_kat === 'V' || p.gyssens_kat === 'VI' ? 'bg-danger' : 'bg-warning text-dark');
-                tableHtml += `<tr>
-                    <td>${p.nama}</td>
-                    <td>${p.antibiotik}</td>
-                    <td>${p.ruangan}</td>
-                    <td><span class="badge ${badgeColor}">${p.gyssens_kat}</span></td>
-                    <td>${p.gyssens_note || '-'}</td>
-                </tr>`;
-            }
+        // --- 7. NOTIFIKASI REVIEW PROSPEKTIF ---
+        let notifHtml = '';
+        patients.filter(p => !p.is_discharged).forEach(p => {
+            p.antibiotic_list.forEach(ab => {
+                let abStart = new Date(ab.tgl_mulai);
+                let abEnd = ab.tgl_stop ? new Date(ab.tgl_stop) : new Date();
+                let diffDays = Math.ceil(Math.abs(abEnd - abStart) / (1000 * 60 * 60 * 24)) || 1;
+                
+                if([3, 5, 7].includes(diffDays)) {
+                    notifHtml += `<div class="alert alert-warning m-2 alert-custom">
+                        <i class="fas fa-bell"></i> <strong>Review Prospektif:</strong> Pasien <b>${p.nama}</b> (${ab.nama}) telah menjalani hari ke-<b>${diffDays}</b>.
+                    </div>`;
+                }
+            });
         });
-        if(tableHtml === '') tableHtml = '<tr><td colspan="5" class="text-center">Belum ada data evaluasi.</td></tr>';
-        $('#tableGyssensTracking tbody').html(tableHtml);
+        $('#notification-area').html(notifHtml || '<p class="p-3 text-muted">Tidak ada notifikasi review hari ini.</p>');
+    }
+
+
+    // ==========================================
+    // GYSSENS FORM
+    // ==========================================
+    function renderGyssensDropdown() {
+        let opt = '<option value="">-- Pilih Pasien --</option>';
+        patients.forEach(p => {
+            opt += `<option value="${p.id}">${p.nama} (${p.antibiotic_list.map(a=>a.nama).join(', ')})</option>`;
+        });
+        $('#gyssens_pasien').html(opt);
     }
 
     function loadGyssensForm() {
@@ -977,76 +1291,8 @@
             p.gyssens_note = $('#gyssens_note').val();
             localStorage.setItem('data_patients', JSON.stringify(patients));
             alert('Evaluasi Gyssens disimpan.');
-            renderGyssensDashboard(); // Update dashboard setelah simpan
+            renderDashboard(); // Update dashboard utama
         }
-    }
-
-    // ==========================================
-    // DASHBOARD UTAMA
-    // ==========================================
-    function renderDashboard() {
-        // Cards
-        let total = requests.length;
-        let acc = requests.filter(r => r.status === 'ACC').length;
-        let rej = requests.filter(r => r.status === 'TOLAK').length;
-        let pend = requests.filter(r => r.status === 'PENDING').length;
-        
-        $('#dash-total-req').text(total);
-        $('#dash-acc').text(acc);
-        $('#dash-reject').text(rej);
-        $('#dash-pending').text(pend);
-
-        // Chart Dokter
-        let dokterCounts = {};
-        requests.forEach(r => { dokterCounts[r.dokter] = (dokterCounts[r.dokter] || 0) + 1; });
-        
-        let ctx1 = document.getElementById('chartDokter').getContext('2d');
-        if(window.chart1) window.chart1.destroy();
-        window.chart1 = new Chart(ctx1, {
-            type: 'bar',
-            data: {
-                labels: Object.keys(dokterCounts),
-                datasets: [{
-                    label: 'Jumlah Permintaan',
-                    data: Object.values(dokterCounts),
-                    backgroundColor: '#007bff'
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-
-        // Chart Kepatuhan (Asumsi: ACC vs TOLAK)
-        let ctx2 = document.getElementById('chartKepatuhan').getContext('2d');
-        if(window.chart2) window.chart2.destroy();
-        window.chart2 = new Chart(ctx2, {
-            type: 'doughnut',
-            data: {
-                labels: ['ACC', 'Tidak ACC'],
-                datasets: [{
-                    data: [acc, rej],
-                    backgroundColor: ['#28a745', '#dc3545']
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-
-        // Notifikasi Review Prospektif
-        let notifHtml = '';
-        patients.filter(p => !p.is_discharged).forEach(p => {
-            let start = new Date(p.tgl_mulai);
-            let diffDays = Math.ceil(Math.abs(new Date() - start) / (1000 * 60 * 60 * 24)) || 1;
-            if([3, 5, 7].includes(diffDays) || diffDays >= p.rencana_stop) {
-                notifHtml += `<div class="alert alert-warning m-2 alert-custom">
-                    <i class="fas fa-bell"></i> <strong>Review Prospektif:</strong> Pasien <b>${p.nama}</b> (${p.antibiotik}) telah menjalani hari ke-<b>${diffDays}</b>. 
-                    ${diffDays >= p.rencana_stop ? '<span class="text-danger">Mencapai batas STOP!</span>' : ''}
-                </div>`;
-            }
-        });
-        $('#notification-area').html(notifHtml || '<p class="p-3 text-muted">Tidak ada notifikasi review hari ini.</p>');
-    }
-
-    function checkNotifications() {
-        // Function called on load, but dashboard handles rendering
     }
 
     // ==========================================
@@ -1057,25 +1303,13 @@
         let hasil = '';
 
         if(dx.includes('pneumonia') || dx.includes('cap')) {
-            hasil = `<strong>Pneumonia Komunitas (CAP):</strong><br>
-                     1. Lini 1: Ceftriaxone + Azithromycin (Watch)<br>
-                     2. Jika ESBL Risk: Meropenem (Reserve)<br>
-                     <em>Data Kuman: Klebsiella & E. Coli Sensitif Meropenem (80-86%)</em>`;
+            hasil = `<strong>Pneumonia Komunitas (CAP):</strong><br>1. Lini 1: Ceftriaxone + Azithromycin (Watch)<br>2. Jika ESBL Risk: Meropenem (Reserve)<br><em>Data Kuman: Klebsiella & E. Coli Sensitif Meropenem (80-86%)</em>`;
         } else if(dx.includes('isk') || dx.includes('isK') || dx.includes('urosepsis')) {
-            hasil = `<strong>Infeksi Saluran Kemih (ISK):</strong><br>
-                     1. Lini 1: Ceftriaxone (Watch)<br>
-                     2. Jika ESBL Risk: Meropenem (Reserve) atau Amikacin (Access)<br>
-                     <em>Data Kuman: E. Coli Sensitif Meropenem (86.8%), Amikacin (97.4%)</em>`;
+            hasil = `<strong>Infeksi Saluran Kemih (ISK):</strong><br>1. Lini 1: Ceftriaxone (Watch)<br>2. Jika ESBL Risk: Meropenem (Reserve) atau Amikacin (Access)<br><em>Data Kuman: E. Coli Sensitif Meropenem (86.8%), Amikacin (97.4%)</em>`;
         } else if(dx.includes('sepsis') || dx.includes('syok')) {
-            hasil = `<strong>Sepsis / Syok Sepsis:</strong><br>
-                     1. Empiris: Meropenem (Reserve) + Vankomisin (Reserve)<br>
-                     2. De-eskalasi sesuai kultur<br>
-                     <em>Data Kuman: Patogen tersering Klebsiella, E. Coli, Acinetobacter (Resisten luas, butuh Reserve)</em>`;
+            hasil = `<strong>Sepsis / Syok Sepsis:</strong><br>1. Empiris: Meropenem (Reserve) + Vankomisin (Reserve)<br>2. De-eskalasi sesuai kultur<br><em>Data Kuman: Patogen tersering Klebsiella, E. Coli, Acinetobacter (Resisten luas, butuh Reserve)</em>`;
         } else if(dx.includes('abses') || dx.includes('ulkus') || dx.includes('gangren')) {
-            hasil = `<strong>Infeksi Jaringan Lunak / Abses:</strong><br>
-                     1. Lini 1: Ampicillin-Sulbactam atau Ceftriaxone + Metronidazole<br>
-                     2. Jika MRSA Risk: Linezolid / Vankomisin (Reserve)<br>
-                     <em>Data Kuman: Staph aureus (MRSA 60%), Sensitif Linezolid (94.5%), Vankomisin (89%)</em>`;
+            hasil = `<strong>Infeksi Jaringan Lunak / Abses:</strong><br>1. Lini 1: Ampicillin-Sulbactam atau Ceftriaxone + Metronidazole<br>2. Jika MRSA Risk: Linezolid / Vankomisin (Reserve)<br><em>Data Kuman: Staph aureus (MRSA 60%), Sensitif Linezolid (94.5%), Vankomisin (89%)</em>`;
         } else {
             hasil = `<em>Belum ada panduan spesifik untuk diagnosa ini. Silakan merujuk pada pedoman PPAB RSAMP secara umum atau konsultasikan ke PPRA.</em>`;
         }
@@ -1089,11 +1323,9 @@
     function exportExcel() {
         let start = $('#exp_start').val();
         let end = $('#exp_end').val();
-        
         if(!start || !end) return alert('Pilih tanggal mulai dan akhir');
 
         let filtered = requests.filter(r => r.tanggal >= start && r.tanggal <= end);
-        
         if(filtered.length === 0) return alert('Tidak ada data pada periode tersebut.');
 
         let ws_data = filtered.map(r => ({
@@ -1104,11 +1336,12 @@
             'DPJP Peminta': r.dokter,
             'Diagnosa': r.diagnosa,
             'Antibiotik': r.antibiotik,
+            'Tipe': r.tipe,
             'Dosis': r.dosis,
             'Durasi': r.durasi,
             'Status PPRA': r.status,
             'Saran PPRA': r.val_alasan,
-            'Stop (Hari)': r.val_stop
+            'Dokter PPRA': r.val_dokter_ppra
         }));
 
         const ws = XLSX.utils.json_to_sheet(ws_data);
@@ -1147,7 +1380,7 @@
         doc.setFontSize(12);
         doc.text("Detail Antibiotik yang Diminta:", 20, y + 40);
         doc.setFontSize(11);
-        doc.text(`Nama Antibiotik: ${r.antibiotik}`, 25, y + 48);
+        doc.text(`Nama Antibiotik: ${r.antibiotik} (${r.tipe})`, 25, y + 48);
         doc.text(`Dosis & Frekuensi: ${r.dosis}`, 25, y + 55);
         doc.text(`Rencana Durasi: ${r.durasi} Hari`, 25, y + 62);
         doc.text(`Alasan Medis:`, 25, y + 69);
@@ -1191,13 +1424,13 @@
         doc.text("KEPUTUSAN PPRA:", 20, y + 50);
         doc.setFontSize(14);
         if(r.status === 'ACC') {
-            doc.setTextColor(0, 128, 0); // Green
+            doc.setTextColor(0, 128, 0);
             doc.text("DISETUJUI (ACC)", 25, y + 60);
         } else {
-            doc.setTextColor(255, 0, 0); // Red
+            doc.setTextColor(255, 0, 0);
             doc.text("TIDAK DISETUJUI (TOLAK)", 25, y + 60);
         }
-        doc.setTextColor(0, 0, 0); // Reset color
+        doc.setTextColor(0, 0, 0);
 
         doc.setFontSize(11);
         doc.text("Alasan / Saran PPRA:", 20, y + 75);
@@ -1209,7 +1442,7 @@
         doc.text(`Instruksi Stop (Hari): ${r.val_stop}`, 20, y + 100);
 
         doc.text("Dokter Spesialis PPRA,", 130, y + 120);
-        doc.text("(_________________________)", 130, y + 140);
+        doc.text(`( ${r.val_dokter_ppra || '____________________'} )`, 130, y + 135);
 
         doc.save(`Validasi_PPRA_${r.nama}.pdf`);
     }
